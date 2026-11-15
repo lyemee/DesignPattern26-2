@@ -9,6 +9,8 @@ import com.holub.life.Storable;
 import com.holub.life.Direction;
 import com.holub.life.Neighborhood;
 import com.holub.life.Universe;
+import com.holub.life.plant.PlantData;
+import com.holub.life.plant.PlantLifecycle;
 
 /*** ****************************************************************
  * The Resident class implements a single cell---a "resident" of a
@@ -25,8 +27,19 @@ public final class Resident implements Cell
 
 	private boolean amAlive 	= false;
 	private boolean willBeAlive	= false;
+	//식물 모드에서 B/S 규칙을 지키지 못해도 살아있으면 willBeAlive = true
 
-	private boolean isStable(){return amAlive == willBeAlive; }
+	//식물 데이터: 식물이 없는 셀은 null
+	//current -> 현재 세대의 식물 데이터
+	private PlantData currentPlantData = null;
+	//next -> 다음 세대의 식물 데이터
+	private PlantData nextPlantData = null;
+
+	//식물의 생존/쇠약 판정 위임 (필드 데이터가 없는 객체이므로 모든 resident가 하나를 공유)
+	private static final PlantLifecycle lifecycle = new PlantLifecycle();
+
+
+	private boolean isStable(){return amAlive == willBeAlive;}
 
 	/** figure the next state.
 	 *  @return true if the cell is not stable (will change state on the
@@ -58,8 +71,58 @@ public final class Resident implements Cell
 		if( southeast.isAlive()) ++neighbors;
 		if( southwest.isAlive()) ++neighbors;
 
-		willBeAlive = (neighbors==3 || (amAlive && neighbors==2));
-		return !isStable();
+		boolean ruleSatisfied = (neighbors==3 || (amAlive && neighbors==2));
+
+		//식물이 없는 셀 -> 원래의 규칙
+		if(currentPlantData == null){
+			willBeAlive = ruleSatisfied;
+			nextPlantData = null;
+			return !isStable();
+		}
+
+		//심어진 식물이 있는 셀
+
+		//현재 상태를 바탕으로 모든 셀을 계산하기 위해 current를 변경하지 않고 복사본 생성
+		PlantData next = currentPlantData.copy();
+
+		//다음 식물 상태 판정
+		boolean alive = lifecycle.applySurvival(next, ruleSatisfied);
+
+		//이웃 잡초 여부 계산
+		boolean growthBlocked = isWeed(north) || isWeed(northeast) || isWeed(northwest) || isWeed(east) ||
+								isWeed(south) || isWeed(southeast) || isWeed(southwest) || isWeed(west);
+
+
+		//살아있고 성장 가능한 상태에서 현재 state의 성장 동작 실행
+		if(alive && lifecycle.canGrow(next, ruleSatisfied, growthBlocked))
+			next.getState().onStep(next);
+
+
+		//다음 생존 여부와 plantData 업데이트
+		willBeAlive = alive;
+		//사망하면 PlantData를 null로
+		nextPlantData = alive ? next : null;
+
+		//plant -> 생존 여부가 그대로여도 내부 상태가 변함 -> 항상 변경 계산(최적화 필요 시 수정)
+		return true;
+	}
+
+	//이웃이 잡초인지 확인
+	private static boolean isWeed(Cell neighbor){
+		if(!(neighbor instanceof Resident)) //보드 가장자리 -> resident가 아님(Cell.Dummy)
+			return false;
+
+		PlantData data = ((Resident)neighbor).currentPlantData;
+
+		//Plantdata가 null이 아니고 blocksGrowth가 true라면 weed로 판정
+		return data != null && data.getPlant().blocksGrowth();
+	}
+
+	//빈 셀에 식물 심기
+	public void plant(PlantData data){
+		currentPlantData = data;
+		nextPlantData = data;
+		amAlive = willBeAlive = true; //심으면 살아있는 셀로 변경
 	}
 
 	private void verify( Cell c, String direction )
@@ -80,6 +143,7 @@ public final class Resident implements Cell
 	public boolean transition()
 	{	boolean changed = isStable();
 		amAlive = willBeAlive;
+		currentPlantData = nextPlantData; //계산해 둔 다음 세대 식물 데이터 반영(식물모드가 아닐 땐 null)
 		return changed;
 	}
 
@@ -99,10 +163,17 @@ public final class Resident implements Cell
 	}
 
 	public void userClicked(Point here, Rectangle surface)
-	{	amAlive = !amAlive;
+	{
+		//살아있는 식물은 클릭으로 죽지 않도록
+		if(currentPlantData != null && amAlive == true)
+			return;
+		amAlive = !amAlive;
 	}
 
-	public void	   clear()			{amAlive = willBeAlive = false; }
+	public void	   clear()			{
+		amAlive = willBeAlive = false;
+		currentPlantData = nextPlantData = null;
+	}
 	public boolean isAlive()		{return amAlive;			    }
 	public Cell    create()			{return new Resident();			}
 	public int 	   widthInCells()	{return 1;}
