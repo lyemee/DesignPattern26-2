@@ -32,3 +32,6 @@ replay_pid*
 /out/
 /build/
 /target/
+
+### Local Files ###
+/local/
