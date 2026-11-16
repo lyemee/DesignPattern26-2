@@ -14,6 +14,7 @@ public class PlantLifecycle {
     }
 
     //성장 step을 증가시킬 수 있는 상황인지 판단
+    //쇠약 상태에서는 성장 x -> 생존과 성장 여부를 분리해서 판단
     //growthBlocked : 근처에 잡초로 인해 성장이 막히는지
     public boolean canGrow(PlantData next, boolean ruleSatisfied, boolean growthBlocked){
         // 구현 필요(일단 예외 처리)

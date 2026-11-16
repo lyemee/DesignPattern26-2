@@ -7,6 +7,7 @@ import javax.swing.*;
 import java.awt.event.*;
 
 import com.holub.io.Files;
+import com.holub.life.game.SimulationMode;
 import com.holub.ui.MenuSite;
 
 import com.holub.life.Cell;
@@ -146,6 +147,25 @@ public class Universe extends JPanel
 			}
 		);
 
+
+		MenuSite.addLine( this, "Mode", "Conway",
+				new ActionListener()
+				{	public void actionPerformed(ActionEvent e)
+				{	changeMode( SimulationMode.CONWAY );
+				}
+				}
+		);
+
+		MenuSite.addLine( this, "Mode", "Plant",
+				new ActionListener()
+				{	public void actionPerformed(ActionEvent e)
+				{	changeMode( SimulationMode.PLANT );
+				}
+				}
+		);
+
+		updateModeMenu();
+
 		Clock.instance().addClockListener //{=Universe.clock.subscribe}
 		(	new Clock.Listener()
 			{	public void tick()
@@ -157,6 +177,23 @@ public class Universe extends JPanel
 			}
 		);
 	}
+
+	// 모드 전환: 정지 → 모델 변경 → 메뉴 상태 → 다시 그리기
+	private void changeMode(SimulationMode mode)
+	{	Clock.instance().stop();		//정지
+		session.changeMode(mode);		//보드 비우기 -> 모드 변경
+		updateModeMenu();				//갱신
+		repaint();						//다시 그리기
+	}
+
+	// 현재 모드의 메뉴 항목 비활성화 (현재 모드 표시 및 현재 모드 재선택 불가)
+	private void updateModeMenu()
+	{
+		SimulationMode mode = session.getMode();
+		MenuSite.getMyMenuItem(this, "Mode", "Conway").setEnabled( mode != SimulationMode.CONWAY );
+		MenuSite.getMyMenuItem(this, "Mode", "Plant" ).setEnabled( mode != SimulationMode.PLANT  );
+	}
+
 
 	/** Singleton Accessor. The Universe object itself is manufactured
 	 *  in Neighborhood.createUniverse()
@@ -183,6 +220,8 @@ public class Universe extends JPanel
 		{	JOptionPane.showMessageDialog( null, "Read Failed!",
 					"The Game of Life", JOptionPane.ERROR_MESSAGE);
 		}
+
+		updateModeMenu();	//메뉴 상태를 모드에 맞추기
 		repaint();
 	}
 

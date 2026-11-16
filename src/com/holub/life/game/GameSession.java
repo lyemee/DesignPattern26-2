@@ -13,7 +13,8 @@ public class GameSession
 {
     private final Cell board;
     private final GenerationManager generationManager = new GenerationManager();
-
+    //기본 모드는 Life game 원본
+    private SimulationMode mode = SimulationMode.CONWAY;
     public GameSession(Cell board){
         this.board = board;
     }
@@ -24,9 +25,24 @@ public class GameSession
         return generationManager.nextGeneration(board);
     }
 
+    public synchronized SimulationMode getMode(){
+        return mode;
+    }
+
+    //모드 전환: 보드를 비운 뒤 모드 전환
+    //일반 셀과 식물 셀이 섞이지 않도록
+    //synchronized -> Tick 계산 도중 보드가 비워지지 않도록 락 사용
+    public synchronized void changeMode(SimulationMode mode){
+        board.clear();
+        this.mode = mode;
+    }
+
     public synchronized void userClicked(Point point, Rectangle bounds){
         // 클릭 처리가 다음 세대 계산과 반영 사이에 끼어들지 않도록
-        board.userClicked(point, bounds);
+        if(mode == SimulationMode.CONWAY) //원본 동작
+            board.userClicked(point, bounds);
+
+        //PLANT 동작 구현 필요
     }
 
     public synchronized void clear(){
@@ -49,6 +65,8 @@ public class GameSession
 
     public synchronized void load(InputStream in) throws IOException
     {
+        //PLANT 모드의 load 아직 미구현 -> CONWAY를 기본으로
+        mode = SimulationMode.CONWAY;
         // 기존 universe의 불러오기 방식
         board.clear();
 
