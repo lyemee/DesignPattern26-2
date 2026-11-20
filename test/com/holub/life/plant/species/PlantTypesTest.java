@@ -105,8 +105,38 @@ class PlantTypesTest
             Point first = targets.get(i);
             assertEquals(new Point(first.x + 1, first.y), targets.get(i + 1));
             assertEquals(new Point(first.x + 2, first.y), targets.get(i + 2));
-            assertTrue(Math.abs(first.x - center.x) + Math.abs(first.y - center.y) >= Dandelion.MIN_DISTANCE);
         }
+        for (Point p : targets)
+            assertTrue(Dandelion.distance(p, center) >= Dandelion.MIN_DISTANCE);
+    }
+
+    @Test
+    @DisplayName("민들레: 부모 왼쪽 후보도 세 칸 모두 최소 거리 이상")
+    void dandelionDistanceForEveryCell()
+    {
+        Point center = new Point(32, 32);
+        for (int seed = 0; seed < 50; seed++)
+            for (Point p : new Dandelion().seedTargets(center, field(64, Set.of()), new Random(seed)))
+                assertTrue(Dandelion.distance(p, center) >= Dandelion.MIN_DISTANCE, p + " 거리 부족");
+    }
+
+    @Test
+    @DisplayName("민들레: 빈 자리가 드물어도 있으면 모두 찾아 뿌림")
+    void dandelionFindsSparseRoom()
+    {
+        Set<Point> empty = new HashSet<>();
+        for (int[] start : new int[][]{ {40, 40}, {45, 45}, {50, 50} })
+            for (int i = 0; i < 3; i++)
+                empty.add(new Point(start[0] + i, start[1]));
+
+        Set<Point> occupied = new HashSet<>();
+        for (int y = 0; y < 64; y++)
+            for (int x = 0; x < 64; x++)
+                if (!empty.contains(new Point(x, y)))
+                    occupied.add(new Point(x, y));
+
+        List<Point> targets = new Dandelion().seedTargets(new Point(2, 2), field(64, occupied), new Random(42));
+        assertEquals(empty, new HashSet<>(targets));
     }
 
     @Test
