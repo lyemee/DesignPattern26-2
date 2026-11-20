@@ -1,4 +1,8 @@
-package com.holub.life.plant;
+package com.holub.life.plant.species;
+
+import com.holub.life.plant.Plant;
+import com.holub.life.plant.PlantState;
+import com.holub.life.plant.TemporaryStage;
 
 //잡초: 항상 잡초 단계
 //주변 8칸 식물의 성장을 막음 (판정은 Resident·PlantLifecycle에서 blocksGrowth()로 확인)

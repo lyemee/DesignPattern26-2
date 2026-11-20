@@ -1,9 +1,13 @@
-package com.holub.life.plant;
+package com.holub.life.plant.species;
 
-//오렌지나무: 씨앗 -> 새싹 -> 나무 -> 열매나무 -> 나무 -> 열매나무 ... (반복)
+import com.holub.life.plant.Plant;
+import com.holub.life.plant.PlantState;
+import com.holub.life.plant.TemporaryStage;
+
+//사과나무: 씨앗 -> 새싹 -> 나무 -> 열매나무 -> 나무 -> 열매나무 ... (반복)
 //열매나무 -> 나무 전환 시점이 자동 수확 시점 (수확 카운트는 GameSession.harvest() 담당)
 //씨를 뿌리지 않음 (seedTargets 기본 구현 사용)
-public class OrangeTree extends Plant {
+public class AppleTree extends Plant {
 
     @Override
     public PlantState initialState() {
@@ -25,7 +29,7 @@ public class OrangeTree extends Plant {
         if (state == TemporaryStage.SEED)     return "🟤";
         if (state == TemporaryStage.SEEDLING) return "🌱";
         if (state == TemporaryStage.TREE)     return "🌳";
-        if (state == TemporaryStage.FRUIT)    return "🍊";
+        if (state == TemporaryStage.FRUIT)    return "🍎";
         return "?";
     }
 }

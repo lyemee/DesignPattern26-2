@@ -1,4 +1,9 @@
-package com.holub.life.plant;
+package com.holub.life.plant.species;
+
+import com.holub.life.plant.Plant;
+import com.holub.life.plant.PlantState;
+import com.holub.life.plant.SeedField;
+import com.holub.life.plant.TemporaryStage;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
