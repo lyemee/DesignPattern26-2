@@ -5,15 +5,17 @@ import java.io.*;
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
+import java.util.Random;
 
 import com.holub.io.Files;
+import com.holub.life.game.SimulationMode;
 import com.holub.ui.MenuSite;
 
 import com.holub.life.Cell;
-import com.holub.life.Storable;
 import com.holub.life.Clock;
 import com.holub.life.Neighborhood;
 import com.holub.life.Resident;
+import com.holub.life.game.GameSession;
 
 /**
  * The Universe is a mediator that sits between the Swing
@@ -27,7 +29,7 @@ import com.holub.life.Resident;
  */
 
 public class Universe extends JPanel
-{	private 		final Cell  	outermostCell;
+{	private 		final GameSession	session;	//GameSession 객체를 통해 게임 보드 관리
 	private static	final Universe 	theInstance = new Universe();
 
 	/** The default height and width of a Neighborhood in cells.
@@ -53,18 +55,29 @@ public class Universe extends JPanel
 		// miserably if the overall size of the grid is too big to fit
 		// on the screen.
 
-		outermostCell = new Neighborhood
+		//보드와 GameSession이 함께 쓸 Random
+		// 한 Random을 공유해야 시드 하나로 탄생·번식·잡초 생성의 결과가 모두 정해짐
+		Random random = new Random();
+
+		//보드 생성
+		// Resident 프로토타입에 Random을 넣으면 Neighborhood가 create()로 셀을 만들 때 같은 Random이 전달됨
+		Cell board = new Neighborhood
 						(	DEFAULT_GRID_SIZE,
 							new Neighborhood
 							(	DEFAULT_GRID_SIZE,
-								new Resident()
+								new Resident(random)	//기존 코드: new Resident()
 							)
 						);
 
+		//생성한 보드를 GameSession에 전달
+		// GameSession이 이후의 입력, 세대 진행 등을 계산
+		session = new GameSession(board, random);	//기존 코드: new GameSession(board)
+
+		//session에서 넓이를 조회해 화면 크기 계산
 		final Dimension PREFERRED_SIZE =
 						new Dimension
-						(  outermostCell.widthInCells() * DEFAULT_CELL_SIZE,
-						   outermostCell.widthInCells() * DEFAULT_CELL_SIZE
+						(  session.widthInCells() * DEFAULT_CELL_SIZE,
+						   session.widthInCells() * DEFAULT_CELL_SIZE
 						);
 
 		addComponentListener
@@ -77,8 +90,8 @@ public class Universe extends JPanel
 					// total size must be an even multiple of 63.
 
 					Rectangle bounds = getBounds();
-					bounds.height /= outermostCell.widthInCells();
-					bounds.height *= outermostCell.widthInCells();
+					bounds.height /= session.widthInCells();
+					bounds.height *= session.widthInCells();
 					bounds.width  =  bounds.height;
 					setBounds( bounds );
 				}
@@ -97,7 +110,8 @@ public class Universe extends JPanel
 				{	Rectangle bounds = getBounds();
 					bounds.x = 0;
 					bounds.y = 0;
-					outermostCell.userClicked(e.getPoint(),bounds);
+					// 클릭 좌표를 Session에 전달하고, 처리 후 화면을 다시 그린다.
+					session.userClicked(e.getPoint(), bounds);
 					repaint();
 				}
 			}
@@ -106,7 +120,7 @@ public class Universe extends JPanel
 		MenuSite.addLine( this, "Grid", "Clear",
 			new ActionListener()
 			{	public void actionPerformed(ActionEvent e)
-				{	outermostCell.clear();
+				{	session.clear();
 					repaint();
 				}
 			}
@@ -139,21 +153,53 @@ public class Universe extends JPanel
 			}
 		);
 
+
+		MenuSite.addLine( this, "Mode", "Conway",
+				new ActionListener()
+				{	public void actionPerformed(ActionEvent e)
+				{	changeMode( SimulationMode.CONWAY );
+				}
+				}
+		);
+
+		MenuSite.addLine( this, "Mode", "Plant",
+				new ActionListener()
+				{	public void actionPerformed(ActionEvent e)
+				{	changeMode( SimulationMode.PLANT );
+				}
+				}
+		);
+
+		updateModeMenu();
+
 		Clock.instance().addClockListener //{=Universe.clock.subscribe}
 		(	new Clock.Listener()
 			{	public void tick()
-				{	if( outermostCell.figureNextState
-						   ( Cell.DUMMY,Cell.DUMMY,Cell.DUMMY,Cell.DUMMY,
-							 Cell.DUMMY,Cell.DUMMY,Cell.DUMMY,Cell.DUMMY
-						   )
-					  )
-					{	if( outermostCell.transition() )
-							refreshNow();
-					}
+				{
+					//GameSession에 한 세대 진행 위임
+					if(session.nextGeneration())
+						refreshNow();
 				}
 			}
 		);
 	}
+
+	// 모드 전환: 정지 → 모델 변경 → 메뉴 상태 → 다시 그리기
+	private void changeMode(SimulationMode mode)
+	{	Clock.instance().stop();		//정지
+		session.changeMode(mode);		//보드 비우기 -> 모드 변경
+		updateModeMenu();				//갱신
+		repaint();						//다시 그리기
+	}
+
+	// 현재 모드의 메뉴 항목 비활성화 (현재 모드 표시 및 현재 모드 재선택 불가)
+	private void updateModeMenu()
+	{
+		SimulationMode mode = session.getMode();
+		MenuSite.getMyMenuItem(this, "Mode", "Conway").setEnabled( mode != SimulationMode.CONWAY );
+		MenuSite.getMyMenuItem(this, "Mode", "Plant" ).setEnabled( mode != SimulationMode.PLANT  );
+	}
+
 
 	/** Singleton Accessor. The Universe object itself is manufactured
 	 *  in Neighborhood.createUniverse()
@@ -170,11 +216,9 @@ public class Universe extends JPanel
 			   Files.userSelected(".",".life","Life File","Load"));
 
 			Clock.instance().stop();		// stop the game and
-			outermostCell.clear();			// clear the board.
 
-			Storable memento = outermostCell.createMemento();
-			memento.load( in );
-			outermostCell.transfer( memento, new Point(0,0), Cell.LOAD );
+			//게임 보드 관련 작업은 session으로 분리
+			session.load(in);
 
 			in.close();
 		}
@@ -182,6 +226,8 @@ public class Universe extends JPanel
 		{	JOptionPane.showMessageDialog( null, "Read Failed!",
 					"The Game of Life", JOptionPane.ERROR_MESSAGE);
 		}
+
+		updateModeMenu();	//메뉴 상태를 모드에 맞추기
 		repaint();
 	}
 
@@ -193,9 +239,8 @@ public class Universe extends JPanel
 
 			Clock.instance().stop();		// stop the game
 
-			Storable memento = outermostCell.createMemento();
-			outermostCell.transfer( memento, new Point(0,0), Cell.STORE );
-			memento.flush(out);
+			//보드 관련 작업 session으로 분리
+			session.store(out);
 
 			out.close();
 		}
@@ -220,7 +265,7 @@ public class Universe extends JPanel
 		// corner of the screen. Pretend that it's at (0,0)
 		panelBounds.x = 0;
 		panelBounds.y = 0;
-		outermostCell.redraw(g, panelBounds, true);		//{=Universe.redraw1}
+		session.redraw(g, panelBounds, true);		//{=Universe.redraw1}
 	}
 
 	/** Force a screen refresh by queing a request on
@@ -244,7 +289,7 @@ public class Universe extends JPanel
 						Rectangle panelBounds = getBounds();
 						panelBounds.x = 0;
 						panelBounds.y = 0;
-						outermostCell.redraw(g, panelBounds, false); //{=Universe.redraw2}
+						session.redraw(g, panelBounds, false); //{=Universe.redraw2}
 					}
 					finally
 					{	g.dispose();

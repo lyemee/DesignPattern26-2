@@ -399,24 +399,59 @@ public final class Neighborhood implements Cell
 		return grid[row][column];
 	}
 
-	/** Notification of a mouse click. The point is relative to the
-	 *  upper-left corner of the surface.
-	 */
-	public void userClicked(Point here, Rectangle surface)
+	//기존 코드
+	// 픽셀 좌표를 하위 셀 크기로 나눠 내려가고, 마지막 두 줄(블록 활성화)은 apply로 그대로 옮김
+	///** Notification of a mouse click. The point is relative to the
+	// *  upper-left corner of the surface.
+	// */
+	//public void userClicked(Point here, Rectangle surface)
+	//{
+	//	int pixelsPerCell = surface.width / gridSize ;
+	//	int row				= here.y     	/ pixelsPerCell ;
+	//	int column			= here.x     	/ pixelsPerCell ;
+	//	int rowOffset		= here.y     	% pixelsPerCell ;
+	//	int columnOffset	= here.x     	% pixelsPerCell ;
+	//
+	//	Point position = new Point( columnOffset, rowOffset );
+	//	Rectangle subcell = new Rectangle(	0, 0, pixelsPerCell,
+	//											  pixelsPerCell );
+	//
+	//	grid[row][column].userClicked(position, subcell); //{=Neighborhood.userClicked.call}
+	//	amActive = true;
+	//	rememberThatCellAtEdgeChangedState(row, column);
+	//}
+
+	//(row, column) 셀까지 재귀로 내려가 action 실행 (기존 userClicked의 경로 처리 방식 사용)
+	// 클릭(GameSession), 씨 뿌리기·잡초 생성(GenerationManager)에서 이 경로를 사용
+	public void apply(int row, int column, CellAction action)
 	{
-		int pixelsPerCell = surface.width / gridSize ;
-		int row				= here.y     	/ pixelsPerCell ;
-		int column			= here.x     	/ pixelsPerCell ;
-		int rowOffset		= here.y     	% pixelsPerCell ;
-		int columnOffset	= here.x     	% pixelsPerCell ;
+		int subcellWidth = grid[0][0].widthInCells();	//하위 셀 한 변의 칸 수 (바깥 블록이면 8, 안쪽 블록이면 1)
+		int gridRow		 = row    / subcellWidth;		//몇 번째 하위 셀인지
+		int gridColumn	 = column / subcellWidth;
 
-		Point position = new Point( columnOffset, rowOffset );
-		Rectangle subcell = new Rectangle(	0, 0, pixelsPerCell,
-												  pixelsPerCell );
+		//하위 셀 안의 좌표로 바꿔 재귀 -> Resident에 닿으면 action 실행
+		grid[gridRow][gridColumn].apply(row % subcellWidth, column % subcellWidth, action);
 
-		grid[row][column].userClicked(position, subcell); //{=Neighborhood.userClicked.call}
+		//원본 userClicked와 같은 처리
+		// 이 블록을 다음 계산 대상으로 표시 (빠뜨리면 안정 상태인 블록의 계산이 생략됨)
 		amActive = true;
-		rememberThatCellAtEdgeChangedState(row, column);
+		// 경계 셀이면 이웃 블록에도 알림 (빠뜨리면 경계 너머 칸의 다음 상태가 계산되지 않음)
+		rememberThatCellAtEdgeChangedState(gridRow, gridColumn);
+	}
+
+	//모든 Resident를 보드 좌표와 함께 순회 (원본 transfer와 같은 좌표 계산)
+	// (row, column): 이 블록의 왼쪽 위 칸이 보드에서 갖는 좌표
+	// 읽기만 함 -> transfer와 달리 amActive, activeEdges를 바꾸지 않음
+	public void collect(int row, int column, CellReport report)
+	{
+		int subcellWidth = grid[0][0].widthInCells();
+
+		for( int gridRow = 0; gridRow < gridSize; ++gridRow )
+			for( int gridColumn = 0; gridColumn < gridSize; ++gridColumn )
+				grid[gridRow][gridColumn].collect(
+						row    + gridRow    * subcellWidth,		//하위 셀의 왼쪽 위 칸 좌표
+						column + gridColumn * subcellWidth,
+						report );
 	}
 
 	public boolean isAlive()

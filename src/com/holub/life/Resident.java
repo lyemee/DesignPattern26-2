@@ -9,6 +9,10 @@ import com.holub.life.Storable;
 import com.holub.life.Direction;
 import com.holub.life.Neighborhood;
 import com.holub.life.Universe;
+import com.holub.life.plant.Plant;
+import com.holub.life.plant.PlantData;
+import com.holub.life.plant.PlantLifecycle;
+import java.util.Random;
 
 /*** ****************************************************************
  * The Resident class implements a single cell---a "resident" of a
@@ -25,8 +29,36 @@ public final class Resident implements Cell
 
 	private boolean amAlive 	= false;
 	private boolean willBeAlive	= false;
+	//식물 모드에서 B/S 규칙을 지키지 못해도 살아있으면 willBeAlive = true
 
-	private boolean isStable(){return amAlive == willBeAlive; }
+	//식물 데이터: 식물이 없는 셀은 null
+	//current -> 현재 세대의 식물 데이터
+	private PlantData currentPlantData = null;
+	//next -> 다음 세대의 식물 데이터
+	private PlantData nextPlantData = null;
+
+	//식물의 생존/쇠약 판정 위임 (필드 데이터가 없는 객체이므로 모든 resident가 하나를 공유)
+	private static final PlantLifecycle lifecycle = new PlantLifecycle();
+
+	//이번 step에 번식하는 꽃, 수확된 과수의 종류 (없으면 null)
+	// 계산에서 기록 -> collect -> 반영(지우기)
+	// 번식한 꽃은 다음 상태(nextPlantData)가 null이 되므로 next가 아닌 별도 필드에 둠
+	// 반영에서 지우므로 계산이 생략된 블록의 셀이 지난 step의 신호를 다시 알리지 않음
+	private Plant seedingPlant   = null;
+	private Plant harvestedPlant = null;
+
+	//규칙 탄생에서 이웃 3개 중 하나를 고를 때 사용 (탄생 로직은 식물 담당이 구현)
+	// 보드 전체가 같은 Random을 공유 -> 테스트에서 시드를 고정하면 결과도 고정
+	private final Random random;
+
+	//보드를 만들 때 프로토타입 하나에만 Random을 넣으면 create()가 모든 셀에 같은 Random을 전달
+	public Resident(Random random)
+	{
+		this.random = random;
+	}
+
+
+	private boolean isStable(){return amAlive == willBeAlive;}
 
 	/** figure the next state.
 	 *  @return true if the cell is not stable (will change state on the
@@ -58,8 +90,92 @@ public final class Resident implements Cell
 		if( southeast.isAlive()) ++neighbors;
 		if( southwest.isAlive()) ++neighbors;
 
-		willBeAlive = (neighbors==3 || (amAlive && neighbors==2));
-		return !isStable();
+		boolean ruleSatisfied = (neighbors==3 || (amAlive && neighbors==2));
+
+		//식물이 없는 셀 -> 원래의 규칙
+		if(currentPlantData == null){
+			//구현 필요: 탄생 조건을 만족하고 이웃에 식물이 있으면 이웃 3개 중 무작위 1개의 종류로 탄생 (random 사용)
+			//    이웃에 식물이 없으면 아래 원본 규칙 그대로
+			willBeAlive = ruleSatisfied;
+			nextPlantData = null;
+			seedingPlant = harvestedPlant = null;
+			return !isStable();
+		}
+
+		//심어진 식물이 있는 셀
+
+		//현재 상태를 바탕으로 모든 셀을 계산하기 위해 current를 변경하지 않고 복사본 생성
+		PlantData next = currentPlantData.copy();
+
+		//다음 식물 상태 판정
+		boolean alive = lifecycle.applySurvival(next, ruleSatisfied);
+
+		//이웃 잡초 여부 계산
+		boolean growthBlocked = isWeed(north) || isWeed(northeast) || isWeed(northwest) || isWeed(east) ||
+								isWeed(south) || isWeed(southeast) || isWeed(southwest) || isWeed(west);
+
+
+		//살아있고 성장 가능한 상태에서 현재 state의 성장 동작 실행
+		if(alive && lifecycle.canGrow(next, ruleSatisfied, growthBlocked))
+			next.getState().onStep(next);
+
+
+		//State가 표시한 신호를 기록 (collect애서 전달)
+		seedingPlant   = next.reproduces() ? next.getPlant() : null;
+		harvestedPlant = next.harvested()  ? next.getPlant() : null;
+		//구현 필요: next.removed()면 사망 처리 (번식한 꽃의 소멸)
+
+		//다음 생존 여부와 plantData 업데이트
+		willBeAlive = alive;
+		//사망하면 PlantData를 null로
+		nextPlantData = alive ? next : null;
+
+		//plant -> 생존 여부가 그대로여도 내부 상태가 변함 -> 항상 변경 계산(최적화 필요 시 수정)
+		return true;
+	}
+
+	//이웃이 잡초인지 확인
+	private static boolean isWeed(Cell neighbor){
+		if(!(neighbor instanceof Resident)) //보드 가장자리 -> resident가 아님(Cell.Dummy)
+			return false;
+
+		PlantData data = ((Resident)neighbor).currentPlantData;
+
+		//Plantdata가 null이 아니고 blocksGrowth가 true라면 weed로 판정
+		return data != null && data.getPlant().blocksGrowth();
+	}
+
+	//일반 모드 클릭: 생존 여부를 반대로 바꿈 (원본 userClicked) -> 클릭 외에도 사용되어 메서드 시그니쳐 변경
+	// willBeAlive는 그대로 -> 다음 계산에서 다시 결정
+	public void flipAlive()
+	{
+		amAlive = !amAlive;
+	}
+
+	//빈 셀에 식물 심기 (식물 모드 클릭, 잡초 생성)
+	// 현재와 다음 상태를 함께 바꿈 -> 다음 계산에서 기존 식물로 취급
+	//  살아남으면 탄생·씨앗이 덮어쓰지 못하고, 생존 판정으로 죽으면 다른 사라지는 칸처럼 번식 대상이 됨
+	public void plant(PlantData data){
+		currentPlantData = data;
+		nextPlantData = data;
+		amAlive = willBeAlive = true; //심으면 살아있는 셀로 변경
+	}
+
+	//식물 제거 (식물 모드 클릭)
+	// 현재와 다음 상태를 함께 지움 -> 데이터를 남기면 이웃의 isWeed()가 죽은 잡초를 봄
+	public void remove()
+	{
+		currentPlantData = nextPlantData = null;
+		amAlive = willBeAlive = false;
+		seedingPlant = harvestedPlant = null;
+	}
+
+	//씨앗 번식
+	// 다음 상태에 사용 (다음 상태 반영시 씨앗이 생성 현재 세대 계산 결과에는 영향 없음)
+	public void sow(PlantData data)
+	{
+		nextPlantData = data;
+		willBeAlive = true;
 	}
 
 	private void verify( Cell c, String direction )
@@ -80,6 +196,8 @@ public final class Resident implements Cell
 	public boolean transition()
 	{	boolean changed = isStable();
 		amAlive = willBeAlive;
+		currentPlantData = nextPlantData; //계산해 둔 다음 세대 식물 데이터 반영(식물모드가 아닐 땐 null)
+		seedingPlant = harvestedPlant = null;	//②에서 이미 알렸으므로 지움
 		return changed;
 	}
 
@@ -98,13 +216,49 @@ public final class Resident implements Cell
 		g.dispose();
 	}
 
+	//기존 코드
+	/*
 	public void userClicked(Point here, Rectangle surface)
-	{	amAlive = !amAlive;
+	{
+		amAlive = !amAlive;
+	}
+	 */
+
+	// 받은 CellAction 동작을 수행
+	public void apply(int row, int column, CellAction action)
+	{
+		assert row == 0 && column == 0;	//Resident는 한 칸이라 (0, 0)만 가능
+		action.execute(this);
 	}
 
-	public void	   clear()			{amAlive = willBeAlive = false; }
+	//이번 step의 계산 결과를 자기 좌표와 함께 알림 (내부 필드는 밖에 내주지 않음)
+	// 번식: 규칙에 따른 다음 세대 계산 뒤, 다음 세대 실제 반영 전에 호출
+	// 잡초 생성: 다음 세대 반영 뒤에 호출
+	public void collect(int row, int column, CellReport report)
+	{
+		//다음 세대에도 살아 있는 식물: 지금 식물이 있고 다음 상태에도 식물이 있음
+		boolean hasSurvivingPlant = currentPlantData != null && nextPlantData != null;
+		//이번에 태어나는 식물: 지금은 비어 있고 다음 상태에 식물이 있음 (규칙 탄생)
+		Plant bornPlant = (currentPlantData == null && nextPlantData != null)
+								? nextPlantData.getPlant() : null;
+		report.cell(row, column, hasSurvivingPlant, bornPlant);
+
+		if(seedingPlant != null)
+			report.seeding(row, column, seedingPlant);
+
+		if(harvestedPlant != null)
+			report.harvested(harvestedPlant);
+	}
+
+	public void	   clear()			{
+		amAlive = willBeAlive = false;
+		currentPlantData = nextPlantData = null;
+		seedingPlant = harvestedPlant = null;
+	}
 	public boolean isAlive()		{return amAlive;			    }
-	public Cell    create()			{return new Resident();			}
+	//기존 코드
+	//public Cell    create()			{return new Resident();			}
+	public Cell    create()			{return new Resident(random);	}	//같은 Random을 새 셀에 전달 (Prototype)
 	public int 	   widthInCells()	{return 1;}
 
 	public Direction isDisruptiveTo()
