@@ -7,6 +7,7 @@ import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Random;
 
 //보드를 보유해 게임 조작의 진입점을 제공 (기존 Universe로 부터 책임 분리)
 public class GameSession
@@ -15,8 +16,17 @@ public class GameSession
     private final GenerationManager generationManager = new GenerationManager();
     //기본 모드는 Life game 원본
     private SimulationMode mode = SimulationMode.CONWAY;
-    public GameSession(Cell board){
+    //보드의 Resident 프로토타입과 같은 Random (Universe가 만들어 보드와 함께 전달) -> 테스트 용이성
+    // 세대 처리(GenerationManager)에 넘겨 번식 배치·잡초 생성의 무작위 선택에 사용
+    private final Random random;
+
+    //기존 코드
+    //public GameSession(Cell board){
+    //    this.board = board;
+    //}
+    public GameSession(Cell board, Random random){
         this.board = board;
+        this.random = random;
     }
 
     //다음 상태 계산 도중 사용자의 클릭 처리와 같은 cell 변화가 영향을 미치지 않도록 synchronized로 락

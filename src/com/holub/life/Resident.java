@@ -11,6 +11,7 @@ import com.holub.life.Neighborhood;
 import com.holub.life.Universe;
 import com.holub.life.plant.PlantData;
 import com.holub.life.plant.PlantLifecycle;
+import java.util.Random;
 
 /*** ****************************************************************
  * The Resident class implements a single cell---a "resident" of a
@@ -37,6 +38,16 @@ public final class Resident implements Cell
 
 	//식물의 생존/쇠약 판정 위임 (필드 데이터가 없는 객체이므로 모든 resident가 하나를 공유)
 	private static final PlantLifecycle lifecycle = new PlantLifecycle();
+
+	//규칙 탄생에서 이웃 3개 중 하나를 고를 때 사용 (탄생 로직은 식물 담당이 구현)
+	// 보드 전체가 같은 Random을 공유 -> 테스트에서 시드를 고정하면 결과도 고정
+	private final Random random;
+
+	//보드를 만들 때 프로토타입 하나에만 Random을 넣으면 create()가 모든 셀에 같은 Random을 전달
+	public Resident(Random random)
+	{
+		this.random = random;
+	}
 
 
 	private boolean isStable(){return amAlive == willBeAlive;}
@@ -189,7 +200,9 @@ public final class Resident implements Cell
 		currentPlantData = nextPlantData = null;
 	}
 	public boolean isAlive()		{return amAlive;			    }
-	public Cell    create()			{return new Resident();			}
+	//기존 코드
+	//public Cell    create()			{return new Resident();			}
+	public Cell    create()			{return new Resident(random);	}	//같은 Random을 새 셀에 전달 (Prototype)
 	public int 	   widthInCells()	{return 1;}
 
 	public Direction isDisruptiveTo()

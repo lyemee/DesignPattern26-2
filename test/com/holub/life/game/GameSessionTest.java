@@ -12,6 +12,7 @@ import java.awt.Rectangle;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -24,13 +25,14 @@ class GameSessionTest
     private static final int SIZE = BLOCK * BLOCK;
     private static final int CELL_PX = 10;              //클릭 좌표 계산용 셀 한 칸의 픽셀 크기
     private static final Rectangle BOUNDS = new Rectangle(0, 0, SIZE * CELL_PX, SIZE * CELL_PX);
+    private static final long SEED = 42;                //무작위 규칙(탄생 종류, 번식, 잡초)의 결과를 고정
 
     private GameSession session;
 
     @BeforeEach
     void setUp()
     {
-        session = new GameSession(newBoard());
+        session = newSession();
     }
 
     //Universe에서 GameSession·GenerationManager로 옮긴 실행 흐름이 원본 Life Game과 같은지 확인하는 테스트
@@ -67,7 +69,7 @@ class GameSessionTest
         byte[] saved = store(session);
 
         //새 게임세션
-        GameSession other = new GameSession(newBoard());
+        GameSession other = newSession();
         //불러오기
         other.load(new ByteArrayInputStream(saved));
 
@@ -100,7 +102,7 @@ class GameSessionTest
     @DisplayName("식물 모드에서 불러오면 일반 모드로 바뀌고 불러온 일반 셀들이 보이는지 테스트")
     void loadSwitchesToConwayMode() throws IOException
     {
-        GameSession source = new GameSession(newBoard());         //불러올 파일 내용 준비: 셀 1개
+        GameSession source = newSession();                       //불러올 파일 내용 준비
         source.userClicked(centerOf(6, 6), BOUNDS);
         byte[] saved = store(source);
 
@@ -111,12 +113,18 @@ class GameSessionTest
         assertEquals(Set.of(cell(6, 6)), alive());
     }
 
-    //테스트용 메서드들 ---
+    //테스트용 보조 메서드들 ---
 
-    //Universe와 같은 방식으로 보드 생성
-    private static Cell newBoard()
+    //Universe와 같은 방식으로 보드와 세션 생성 (보드와 세션이 같은 Random을 공유)
+    private static GameSession newSession()
     {
-        return new Neighborhood(BLOCK, new Neighborhood(BLOCK, new Resident()));
+        Random random = new Random(SEED);
+        return new GameSession(newBoard(random), random);
+    }
+
+    private static Cell newBoard(Random random)
+    {
+        return new Neighborhood(BLOCK, new Neighborhood(BLOCK, new Resident(random)));
     }
 
     //(행, 열) 셀을 클릭(GUI의 클릭 테스트용) -> 셀 중앙의 픽셀 좌표로 변환해 전달
@@ -147,7 +155,7 @@ class GameSessionTest
     //  store()로 저장 → 빈 Memento 객체에 불러오기 → Cell.Memento.isAlive(Point)로 칸마다 생존 여부 확인
     private static Set<String> alive(GameSession target) throws IOException
     {
-        Cell.Memento memento = (Cell.Memento) newBoard().createMemento();
+        Cell.Memento memento = (Cell.Memento) newBoard(new Random(SEED)).createMemento();   //저장 형식을 읽는 데만 쓰는 빈 보드
         memento.load(new ByteArrayInputStream(store(target)));
 
         Set<String> result = new TreeSet<>();
