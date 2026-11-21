@@ -29,10 +29,29 @@ public class GameSession
         this.random = random;
     }
 
+    //(수확 개수) 종류별 수확 개수 Map 자리. 키는 식물 종류 id
+
     //다음 상태 계산 도중 사용자의 클릭 처리와 같은 cell 변화가 영향을 미치지 않도록 synchronized로 락
+    //반환: 화면을 다시 그려야 하는지 (Universe는 true일 때만 refreshNow)
     public synchronized boolean nextGeneration(){
-        // generation manager 객체에게 다음 세대 처리 위임
-        return generationManager.nextGeneration(board);
+        //기존 코드
+        //return generationManager.nextGeneration(board);
+
+        //(Undo) 여기서 Snapshot 저장: 보드를 바꾸기 전 상태
+
+        // 1) 한 세대 처리 (① 계산 → ② 수집과 번식 배치 → ③ 반영)
+        GenerationResult result = generationManager.nextGeneration(board, random);
+
+        // 2) (수확 개수) result.harvested()를 종류별 개수에 더함
+
+        // 3) 식물 모드이고 잡초를 생성할 Tick이면 잡초 생성 (주기는 잡초 담당자가 정함)
+        //    1)의 결과와 무관하게 호출 -> 빈 보드에도 잡초가 생김
+        boolean weedSpawned = false;
+        //if(mode == SimulationMode.PLANT && 잡초 생성 Tick)
+        //    weedSpawned = generationManager.spawnWeeds(board, random, 잡초 Factory);
+
+        // 4) 세대 변화가 있거나 잡초만 생긴 Tick도 화면 갱신
+        return result.changed() || weedSpawned;
     }
 
     public synchronized SimulationMode getMode(){

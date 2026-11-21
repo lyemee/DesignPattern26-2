@@ -68,6 +68,13 @@ public interface Cell
 	// DUMMY: 보드 밖이라 아무것도 하지 않음
 	void apply(int row, int column, CellAction action);
 
+	//모든 Resident가 자기 좌표와 함께 이번 step의 계산 결과를 report에 알림
+	// row, column: 이 셀의 왼쪽 위 칸이 보드에서 갖는 좌표
+	// Neighborhood: 하위 셀마다 좌표를 계산해 재귀 (읽기만 하고 상태는 바꾸지 않음)
+	// Resident: report.cell(), seeding(), harvested() 호출
+	// DUMMY: 아무것도 하지 않음
+	void collect(int row, int column, CellReport report);
+
 	/** Return true if this cell or any subcells are alive.
 	 */
 	boolean isAlive();
@@ -158,6 +165,7 @@ public interface Cell
 
 		//public void	userClicked(Point h, Rectangle s				){}	//기존 코드 (apply로 대체)
 		public void apply(int r, int c, CellAction action			){}
+		public void collect(int r, int c, CellReport report			){}
 		public void redraw 		(Graphics g, Rectangle here,
 												 boolean drawAll	){}
 

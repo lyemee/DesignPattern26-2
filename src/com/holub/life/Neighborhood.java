@@ -439,6 +439,21 @@ public final class Neighborhood implements Cell
 		rememberThatCellAtEdgeChangedState(gridRow, gridColumn);
 	}
 
+	//모든 Resident를 보드 좌표와 함께 순회 (원본 transfer와 같은 좌표 계산)
+	// (row, column): 이 블록의 왼쪽 위 칸이 보드에서 갖는 좌표
+	// 읽기만 함 -> transfer와 달리 amActive, activeEdges를 바꾸지 않음
+	public void collect(int row, int column, CellReport report)
+	{
+		int subcellWidth = grid[0][0].widthInCells();
+
+		for( int gridRow = 0; gridRow < gridSize; ++gridRow )
+			for( int gridColumn = 0; gridColumn < gridSize; ++gridColumn )
+				grid[gridRow][gridColumn].collect(
+						row    + gridRow    * subcellWidth,		//하위 셀의 왼쪽 위 칸 좌표
+						column + gridColumn * subcellWidth,
+						report );
+	}
+
 	public boolean isAlive()
 	{	return true;
 	}

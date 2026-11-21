@@ -9,6 +9,7 @@ import com.holub.life.Storable;
 import com.holub.life.Direction;
 import com.holub.life.Neighborhood;
 import com.holub.life.Universe;
+import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantData;
 import com.holub.life.plant.PlantLifecycle;
 import java.util.Random;
@@ -38,6 +39,13 @@ public final class Resident implements Cell
 
 	//식물의 생존/쇠약 판정 위임 (필드 데이터가 없는 객체이므로 모든 resident가 하나를 공유)
 	private static final PlantLifecycle lifecycle = new PlantLifecycle();
+
+	//이번 step에 번식하는 꽃, 수확된 과수의 종류 (없으면 null)
+	// 계산에서 기록 -> collect -> 반영(지우기)
+	// 번식한 꽃은 다음 상태(nextPlantData)가 null이 되므로 next가 아닌 별도 필드에 둠
+	// 반영에서 지우므로 계산이 생략된 블록의 셀이 지난 step의 신호를 다시 알리지 않음
+	private Plant seedingPlant   = null;
+	private Plant harvestedPlant = null;
 
 	//규칙 탄생에서 이웃 3개 중 하나를 고를 때 사용 (탄생 로직은 식물 담당이 구현)
 	// 보드 전체가 같은 Random을 공유 -> 테스트에서 시드를 고정하면 결과도 고정
@@ -86,8 +94,11 @@ public final class Resident implements Cell
 
 		//식물이 없는 셀 -> 원래의 규칙
 		if(currentPlantData == null){
+			//구현 필요: 탄생 조건을 만족하고 이웃에 식물이 있으면 이웃 3개 중 무작위 1개의 종류로 탄생 (random 사용)
+			//    이웃에 식물이 없으면 아래 원본 규칙 그대로
 			willBeAlive = ruleSatisfied;
 			nextPlantData = null;
+			seedingPlant = harvestedPlant = null;
 			return !isStable();
 		}
 
@@ -108,6 +119,11 @@ public final class Resident implements Cell
 		if(alive && lifecycle.canGrow(next, ruleSatisfied, growthBlocked))
 			next.getState().onStep(next);
 
+
+		//State가 표시한 신호를 기록 (collect애서 전달)
+		seedingPlant   = next.reproduces() ? next.getPlant() : null;
+		harvestedPlant = next.harvested()  ? next.getPlant() : null;
+		//구현 필요: next.removed()면 사망 처리 (번식한 꽃의 소멸)
 
 		//다음 생존 여부와 plantData 업데이트
 		willBeAlive = alive;
@@ -143,6 +159,14 @@ public final class Resident implements Cell
 		amAlive = willBeAlive = true; //심으면 살아있는 셀로 변경
 	}
 
+	//씨앗 번식
+	// 다음 상태에 사용 (다음 상태 반영시 씨앗이 생성 현재 세대 계산 결과에는 영향 없음)
+	public void sow(PlantData data)
+	{
+		nextPlantData = data;
+		willBeAlive = true;
+	}
+
 	private void verify( Cell c, String direction )
 	{	assert (c instanceof Resident) || (c == Cell.DUMMY)
 				: "incorrect type for " + direction +  ": " +
@@ -162,6 +186,7 @@ public final class Resident implements Cell
 	{	boolean changed = isStable();
 		amAlive = willBeAlive;
 		currentPlantData = nextPlantData; //계산해 둔 다음 세대 식물 데이터 반영(식물모드가 아닐 땐 null)
+		seedingPlant = harvestedPlant = null;	//②에서 이미 알렸으므로 지움
 		return changed;
 	}
 
@@ -195,9 +220,29 @@ public final class Resident implements Cell
 		action.execute(this);
 	}
 
+	//이번 step의 계산 결과를 자기 좌표와 함께 알림 (내부 필드는 밖에 내주지 않음)
+	// 번식: 규칙에 따른 다음 세대 계산 뒤, 다음 세대 실제 반영 전에 호출
+	// 잡초 생성: 다음 세대 반영 뒤에 호출
+	public void collect(int row, int column, CellReport report)
+	{
+		//다음 세대에도 살아 있는 식물: 지금 식물이 있고 다음 상태에도 식물이 있음
+		boolean hasSurvivingPlant = currentPlantData != null && nextPlantData != null;
+		//이번에 태어나는 식물: 지금은 비어 있고 다음 상태에 식물이 있음 (규칙 탄생)
+		Plant bornPlant = (currentPlantData == null && nextPlantData != null)
+								? nextPlantData.getPlant() : null;
+		report.cell(row, column, hasSurvivingPlant, bornPlant);
+
+		if(seedingPlant != null)
+			report.seeding(row, column, seedingPlant);
+
+		if(harvestedPlant != null)
+			report.harvested(harvestedPlant);
+	}
+
 	public void	   clear()			{
 		amAlive = willBeAlive = false;
 		currentPlantData = nextPlantData = null;
+		seedingPlant = harvestedPlant = null;
 	}
 	public boolean isAlive()		{return amAlive;			    }
 	//기존 코드
