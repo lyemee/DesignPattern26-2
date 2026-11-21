@@ -37,10 +37,28 @@ public class GameSession
         this.mode = mode;
     }
 
+    //화면 진입점: Universe가 클릭한 픽셀 좌표와 화면 크기를 넘김
+    // 클릭 처리가 다음 세대 계산과 반영 사이에 끼어들지 않도록 synchronized
     public synchronized void userClicked(Point point, Rectangle bounds){
-        // 클릭 처리가 다음 세대 계산과 반영 사이에 끼어들지 않도록
-        if(mode == SimulationMode.CONWAY) //원본 동작
-            board.userClicked(point, bounds);
+        //기존 코드
+        //board.userClicked(point, bounds);
+
+        // 1) 픽셀 → 셀 좌표
+        //    Universe가 화면을 보드 너비의 배수인 정사각형으로 맞추므로
+        //    원본 Neighborhood의 단계별 나눗셈과 같은 칸을 가리킴
+        int width    = board.widthInCells();
+        int cellSize = bounds.width / width;
+        if(cellSize == 0 || point.x < 0 || point.y < 0)   //칸 크기를 정할 수 없거나 왼쪽·위쪽 밖
+            return;                                     // (나누기 전에 검사: -1 / 8도 0이 되어 첫 줄로 처리됨)
+        int row    = point.y / cellSize;
+        int column = point.x / cellSize;
+        if(row >= width || column >= width)             //오른쪽·아래쪽 밖
+            return;
+
+        // 2) 모드에 맞는 동작(CellAction)을 만들어 apply 경로로 전달
+        //    apply가 목적지 셀까지 내려가며 지나간 블록을 활성화
+        if(mode == SimulationMode.CONWAY)
+            board.apply(row, column, cell -> cell.flipAlive());   //원본 동작
 
         //PLANT 동작 구현 필요
     }

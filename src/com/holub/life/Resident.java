@@ -118,6 +118,13 @@ public final class Resident implements Cell
 		return data != null && data.getPlant().blocksGrowth();
 	}
 
+	//일반 모드 클릭: 생존 여부를 반대로 바꿈 (원본 userClicked) -> 클릭 외에도 사용되어 메서드 시그니쳐 변경
+	// willBeAlive는 그대로 -> 다음 계산에서 다시 결정
+	public void flipAlive()
+	{
+		amAlive = !amAlive;
+	}
+
 	//빈 셀에 식물 심기
 	public void plant(PlantData data){
 		currentPlantData = data;
@@ -162,12 +169,19 @@ public final class Resident implements Cell
 		g.dispose();
 	}
 
+	//기존 코드
+	/*
 	public void userClicked(Point here, Rectangle surface)
 	{
-		//살아있는 식물은 클릭으로 죽지 않도록
-		if(currentPlantData != null && amAlive == true)
-			return;
 		amAlive = !amAlive;
+	}
+	 */
+
+	// 받은 CellAction 동작을 수행
+	public void apply(int row, int column, CellAction action)
+	{
+		assert row == 0 && column == 0;	//Resident는 한 칸이라 (0, 0)만 가능
+		action.execute(this);
 	}
 
 	public void	   clear()			{
