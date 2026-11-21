@@ -2,6 +2,8 @@ package com.holub.life.game;
 
 import com.holub.life.Cell;
 import com.holub.life.Storable;
+import com.holub.life.plant.PlantData;
+import com.holub.life.plant.PlantFactory;
 
 import java.awt.*;
 import java.io.IOException;
@@ -19,6 +21,8 @@ public class GameSession
     //보드의 Resident 프로토타입과 같은 Random (Universe가 만들어 보드와 함께 전달) -> 테스트 용이성
     // 세대 처리(GenerationManager)에 넘겨 번식 배치·잡초 생성의 무작위 선택에 사용
     private final Random random;
+    //식물 선택 메뉴에서 고른 종류. 고르기 전에는 null -> 식물 모드에서 빈 칸을 눌러도 심지 않음
+    private PlantFactory selectedPlant = null;
 
     //기존 코드
     //public GameSession(Cell board){
@@ -88,8 +92,19 @@ public class GameSession
         //    apply가 목적지 셀까지 내려가며 지나간 블록을 활성화
         if(mode == SimulationMode.CONWAY)
             board.apply(row, column, cell -> cell.flipAlive());   //원본 동작
+        else
+            board.apply(row, column, cell -> {
+                if(cell.isAlive())                                          //식물 모드에서 살아 있는 칸 = 식물이 있는 칸
+                    cell.remove();                                          // -> 종류·단계와 상관없이 제거
+                else if(selectedPlant != null)
+                    cell.plant(new PlantData(selectedPlant.createPlant())); //빈 칸 -> 선택한 식물 심기
+                //식물을 고르지 않았으면 아무것도 하지 않음 (Conway 셀이 섞이지 않음)
+            });
+    }
 
-        //PLANT 동작 구현 필요
+    //식물 선택 메뉴에서 호출 -> 이후 식물 모드 클릭은 이 종류를 심음
+    public synchronized void selectPlant(PlantFactory factory){
+        selectedPlant = factory;
     }
 
     public synchronized void clear(){

@@ -6,6 +6,7 @@ import com.holub.life.Neighborhood;
 import com.holub.life.Resident;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantData;
+import com.holub.life.plant.PlantFactory;
 import com.holub.life.plant.PlantState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +41,11 @@ class GameSessionTest
         public PlantState initialState()                { return next -> {}; }
         public PlantState nextState(PlantState current) { return current; }
         public String getImage(PlantState state)        { return ""; }   //Plant에 getImage가 추상 메서드로 있어도 컴파일되도록
+    };
+    //식물 선택 메뉴 대신 사용하는 Factory
+    private static final PlantFactory TEST_FACTORY = new PlantFactory()
+    {
+        public Plant createPlant() { return TEST_PLANT; }
     };
 
     private GameSession session;
@@ -126,6 +132,26 @@ class GameSessionTest
 
         assertEquals(SimulationMode.CONWAY, session.getMode());
         assertEquals(Set.of(cell(6, 6)), alive());
+    }
+
+    //식물 모드 클릭 규칙: 식물이 있으면 종류와 상관없이 제거, 빈 칸이면 선택한 식물 심기
+    // 식물을 고르지 않고 누르면 아무것도 심지 않아야 함 (Conway 셀이 식물 모드에 섞이지 않음)
+    // figureNextState는 사용하지 않는 테스트
+    @Test
+    @DisplayName("식물 모드에서 클릭으로 선택한 식물을 심고, 다시 클릭하면 제거하는지 테스트")
+    void plantModeClickPlantsAndRemoves() throws IOException
+    {
+        session.changeMode(SimulationMode.PLANT);
+
+        click(2, 2);                                              //아직 식물을 고르지 않음
+        assertTrue(alive().isEmpty());
+
+        session.selectPlant(TEST_FACTORY);
+        click(2, 2);                                              //빈 칸 → 심기
+        assertEquals(Set.of(cell(2, 2)), alive());
+
+        click(2, 2);                                              //식물 칸 → 제거
+        assertTrue(alive().isEmpty());
     }
 
     //셀에 쓰는 경로(apply)와 셀을 읽는 경로(collect)가 같은 (행, 열)을 쓰는지 확인

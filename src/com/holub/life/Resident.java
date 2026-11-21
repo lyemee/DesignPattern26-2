@@ -152,11 +152,22 @@ public final class Resident implements Cell
 		amAlive = !amAlive;
 	}
 
-	//빈 셀에 식물 심기
+	//빈 셀에 식물 심기 (식물 모드 클릭, 잡초 생성)
+	// 현재와 다음 상태를 함께 바꿈 -> 다음 계산에서 기존 식물로 취급
+	//  살아남으면 탄생·씨앗이 덮어쓰지 못하고, 생존 판정으로 죽으면 다른 사라지는 칸처럼 번식 대상이 됨
 	public void plant(PlantData data){
 		currentPlantData = data;
 		nextPlantData = data;
 		amAlive = willBeAlive = true; //심으면 살아있는 셀로 변경
+	}
+
+	//식물 제거 (식물 모드 클릭)
+	// 현재와 다음 상태를 함께 지움 -> 데이터를 남기면 이웃의 isWeed()가 죽은 잡초를 봄
+	public void remove()
+	{
+		currentPlantData = nextPlantData = null;
+		amAlive = willBeAlive = false;
+		seedingPlant = harvestedPlant = null;
 	}
 
 	//씨앗 번식
