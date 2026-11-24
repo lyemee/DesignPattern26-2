@@ -30,8 +30,8 @@ public abstract class FlowerPlant extends Plant {
     //단계별 그림 파일 (resources/plant/) - 꽃 단계만 종류별로 다름
     @Override
     public final String getImage(PlantState state) {
-        if (state == TemporaryStage.SEED)     return FruitTree.SEED_IMAGE;
-        if (state == TemporaryStage.SEEDLING) return FruitTree.SPROUT_IMAGE;
+        if (state == TemporaryStage.SEED)     return PlantImages.SEED;
+        if (state == TemporaryStage.SEEDLING) return PlantImages.SPROUT;
         if (state == TemporaryStage.FLOWER)   return flowerImage();
         return null;                                                // 모르는 단계는 그리지 않음
     }

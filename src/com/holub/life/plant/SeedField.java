@@ -9,6 +9,6 @@ public interface SeedField {
     //보드 안이면서 현재 죽어 있는(씨를 뿌릴 수 있는) 칸인지
     boolean isEmpty(Point position);
 
-    //보드 한 변의 셀 개수 (민들레의 먼 거리 좌표 계산용)
+    //보드 한 변의 셀 개수 (민들레의 무작위 위치 계산용)
     int widthInCells();
 }

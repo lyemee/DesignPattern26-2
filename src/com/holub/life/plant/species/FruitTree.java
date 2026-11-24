@@ -29,16 +29,18 @@ public abstract class FruitTree extends Plant {
     //단계별 그림 파일 (resources/plant/) - 열매 단계만 종류별로 다름
     @Override
     public final String getImage(PlantState state) {
-        if (state == TemporaryStage.SEED)     return SEED_IMAGE;
-        if (state == TemporaryStage.SEEDLING) return SPROUT_IMAGE;
+        if (state == TemporaryStage.SEED)     return PlantImages.SEED;
+        if (state == TemporaryStage.SEEDLING) return PlantImages.SPROUT;
         if (state == TemporaryStage.TREE)     return "tree.png";
         if (state == TemporaryStage.FRUIT)    return fruitImage();
         if (state == TemporaryStage.WITHERED) return "withered.png";
         return null;                                                // 모르는 단계는 그리지 않음
     }
 
-    static final String SEED_IMAGE   = "seed.png";      // 씨앗 (꽃과 공통)
-    static final String SPROUT_IMAGE = "sprout.png";    // 새싹 (꽃과 공통)
+    //수확량 표시에 쓰는 열매 그림 (단계 구현과 상관없이 열매 그림만 필요할 때)
+    public final String harvestImage() {
+        return fruitImage();
+    }
 
     //열매나무 단계 그림 (종류별)
     protected abstract String fruitImage();
