@@ -28,6 +28,6 @@ public class Sunflower extends FlowerPlant {
 
     @Override
     protected String flowerImage() {
-        return "🌻";
+        return "sunflower.png";
     }
 }
