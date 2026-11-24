@@ -51,7 +51,7 @@ public class Universe extends JPanel
 	 *  This size is extrinsic to a Resident (It's passed into the
 	 *  Resident's "draw yourself" method.
 	 */
-	private static final int  DEFAULT_CELL_SIZE = 8;
+	private static final int  DEFAULT_CELL_SIZE = 12;
 
 	// The constructor is private so that the universe can be created
 	// only by an outer-class method [Neighborhood.createUniverse()].
