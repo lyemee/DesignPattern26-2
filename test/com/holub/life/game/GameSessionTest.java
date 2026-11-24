@@ -1,8 +1,13 @@
 package com.holub.life.game;
 
 import com.holub.life.Cell;
+import com.holub.life.CellReport;
 import com.holub.life.Neighborhood;
 import com.holub.life.Resident;
+import com.holub.life.plant.Plant;
+import com.holub.life.plant.PlantData;
+import com.holub.life.plant.PlantFactory;
+import com.holub.life.plant.PlantState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,6 +17,10 @@ import java.awt.Rectangle;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -24,13 +33,27 @@ class GameSessionTest
     private static final int SIZE = BLOCK * BLOCK;
     private static final int CELL_PX = 10;              //클릭 좌표 계산용 셀 한 칸의 픽셀 크기
     private static final Rectangle BOUNDS = new Rectangle(0, 0, SIZE * CELL_PX, SIZE * CELL_PX);
+    private static final long SEED = 42;                //무작위 규칙(탄생 종류, 번식, 잡초)의 결과를 고정
+
+    //경로 확인용 식물: 구체 식물 종류와 상관없이 심기·수집 경로만 확인
+    private static final Plant TEST_PLANT = new Plant()
+    {
+        public PlantState initialState()                { return next -> {}; }
+        public PlantState nextState(PlantState current) { return current; }
+        public String getImage(PlantState state)        { return ""; }   //Plant에 getImage가 추상 메서드로 있어도 컴파일되도록
+    };
+    //식물 선택 메뉴 대신 사용하는 Factory
+    private static final PlantFactory TEST_FACTORY = new PlantFactory()
+    {
+        public Plant createPlant() { return TEST_PLANT; }
+    };
 
     private GameSession session;
 
     @BeforeEach
     void setUp()
     {
-        session = new GameSession(newBoard());
+        session = newSession();
     }
 
     //Universe에서 GameSession·GenerationManager로 옮긴 실행 흐름이 원본 Life Game과 같은지 확인하는 테스트
@@ -67,7 +90,7 @@ class GameSessionTest
         byte[] saved = store(session);
 
         //새 게임세션
-        GameSession other = new GameSession(newBoard());
+        GameSession other = newSession();
         //불러오기
         other.load(new ByteArrayInputStream(saved));
 
@@ -100,7 +123,7 @@ class GameSessionTest
     @DisplayName("식물 모드에서 불러오면 일반 모드로 바뀌고 불러온 일반 셀들이 보이는지 테스트")
     void loadSwitchesToConwayMode() throws IOException
     {
-        GameSession source = new GameSession(newBoard());         //불러올 파일 내용 준비: 셀 1개
+        GameSession source = newSession();                       //불러올 파일 내용 준비
         source.userClicked(centerOf(6, 6), BOUNDS);
         byte[] saved = store(source);
 
@@ -111,12 +134,68 @@ class GameSessionTest
         assertEquals(Set.of(cell(6, 6)), alive());
     }
 
-    //테스트용 메서드들 ---
-
-    //Universe와 같은 방식으로 보드 생성
-    private static Cell newBoard()
+    //식물 모드 클릭 규칙: 식물이 있으면 종류와 상관없이 제거, 빈 칸이면 선택한 식물 심기
+    // 식물을 고르지 않고 누르면 아무것도 심지 않아야 함 (Conway 셀이 식물 모드에 섞이지 않음)
+    // figureNextState는 사용하지 않는 테스트
+    @Test
+    @DisplayName("식물 모드에서 클릭으로 선택한 식물을 심고, 다시 클릭하면 제거하는지 테스트")
+    void plantModeClickPlantsAndRemoves() throws IOException
     {
-        return new Neighborhood(BLOCK, new Neighborhood(BLOCK, new Resident()));
+        session.changeMode(SimulationMode.PLANT);
+
+        click(2, 2);                                              //아직 식물을 고르지 않음
+        assertTrue(alive().isEmpty());
+
+        session.selectPlant(TEST_FACTORY);
+        click(2, 2);                                              //빈 칸 → 심기
+        assertEquals(Set.of(cell(2, 2)), alive());
+
+        click(2, 2);                                              //식물 칸 → 제거
+        assertTrue(alive().isEmpty());
+    }
+
+    //셀에 쓰는 경로(apply)와 셀을 읽는 경로(collect)가 같은 (행, 열)을 쓰는지 확인
+    // 블록 경계 칸(3, 4)과 보드 모서리 칸을 심어 하위 블록 좌표 계산 확인
+    // 행·열을 뒤집은 좌표가 기대 집합에 없도록 비대칭으로 배치 -> 행·열을 통째로 바꾸는 오류도 잡음
+    // collect가 모든 칸을 한 번씩 방문하는지도 확인 (번식·잡초 생성이 빈 칸을 빠짐없이 봐야 함)
+    @Test
+    @DisplayName("apply로 심은 칸을 collect가 정상적으로 알리고 모든 칸을 한 번씩 방문하는지 테스트")
+    void applyAndCollectUseSameCoordinates()
+    {
+        Cell board = newBoard(new Random(SEED));
+        int[][] targets = { {3, 4}, {4, 12}, {0, SIZE - 1}, {13, 2} };
+        for (int[] target : targets)
+            board.apply(target[0], target[1], c -> c.plant(new PlantData(TEST_PLANT)));
+
+        List<String> visited = new ArrayList<>();
+        Set<String> withPlant = new TreeSet<>();
+        board.collect(0, 0, new CellReport()
+        {
+            public void cell(int row, int column, boolean hasSurvivingPlant, Plant bornPlant)
+            {
+                visited.add(GameSessionTest.cell(row, column));
+                if (hasSurvivingPlant)
+                    withPlant.add(GameSessionTest.cell(row, column));
+            }
+        });
+
+        assertEquals(SIZE * SIZE, visited.size());                  //모든 칸을 한 번씩
+        assertEquals(SIZE * SIZE, new HashSet<>(visited).size());   //서로 다른 좌표로
+        assertEquals(Set.of(cell(3, 4), cell(4, 12), cell(0, SIZE - 1), cell(13, 2)), withPlant);
+    }
+
+    //테스트용 보조 메서드들 ---
+
+    //Universe와 같은 방식으로 보드와 세션 생성 (보드와 세션이 같은 Random을 공유)
+    private static GameSession newSession()
+    {
+        Random random = new Random(SEED);
+        return new GameSession(newBoard(random), random);
+    }
+
+    private static Cell newBoard(Random random)
+    {
+        return new Neighborhood(BLOCK, new Neighborhood(BLOCK, new Resident(random)));
     }
 
     //(행, 열) 셀을 클릭(GUI의 클릭 테스트용) -> 셀 중앙의 픽셀 좌표로 변환해 전달
@@ -147,7 +226,7 @@ class GameSessionTest
     //  store()로 저장 → 빈 Memento 객체에 불러오기 → Cell.Memento.isAlive(Point)로 칸마다 생존 여부 확인
     private static Set<String> alive(GameSession target) throws IOException
     {
-        Cell.Memento memento = (Cell.Memento) newBoard().createMemento();
+        Cell.Memento memento = (Cell.Memento) newBoard(new Random(SEED)).createMemento();   //저장 형식을 읽는 데만 쓰는 빈 보드
         memento.load(new ByteArrayInputStream(store(target)));
 
         Set<String> result = new TreeSet<>();

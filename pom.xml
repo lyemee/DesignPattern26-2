@@ -32,6 +32,12 @@
         <testSourceDirectory>test</testSourceDirectory>
 
         <plugins>
+            <!-- 컴파일 플러그인 (버전 고정: Maven 버전마다 기본 플러그인 버전이 달라 빌드 결과가 달라질 수 있음) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
             <!-- JUnit 5 테스트를 실행하는 플러그인 (버전 고정) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

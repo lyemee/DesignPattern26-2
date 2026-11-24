@@ -6,6 +6,12 @@ public class PlantData {
     private int growthProgress; // 이번 단계에서 성장한 step 수
     private int deathProgress;  // 연속으로 생존 조건을 채우지 못한 step 수
 
+    //이번 step 신호: State가 onStep()에서 표시하고 Resident가 읽음
+    // copy()로 만든 next는 모두 false에서 시작 -> 지난 step의 신호가 남지 않음
+    private boolean reproduce;  // 번식 (꽃)
+    private boolean harvest;    // 자동 수확 (열매나무)
+    private boolean remove;     // 소멸 (번식한 꽃)
+
     //새로 심을 때 -> 식물 종류에 따른 시작 단계에서 출발
     public PlantData(Plant plant){
         this.plant = plant;
@@ -34,7 +40,15 @@ public class PlantData {
     public int getGrowthProgress()   { return growthProgress; }
     public int getDeathProgress()    { return deathProgress; }
 
+    // 읽기 (Resident)
+    public boolean reproduces()      { return reproduce; }
+    public boolean harvested()       { return harvest; }
+    public boolean removed()         { return remove; }
+
     //변경
+    void markReproduce()                   { this.reproduce = true; }
+    void markHarvest()                     { this.harvest = true; }
+    void markRemove()                      { this.remove = true; }
     void setState(PlantState state)        { this.state = state; }
     void setGrowthProgress(int value)      { this.growthProgress = value; }
     void setDeathProgress(int value)       { this.deathProgress = value; }

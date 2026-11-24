@@ -5,6 +5,7 @@ import java.io.*;
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
+import java.util.Random;
 
 import com.holub.io.Files;
 import com.holub.life.game.SimulationMode;
@@ -54,18 +55,23 @@ public class Universe extends JPanel
 		// miserably if the overall size of the grid is too big to fit
 		// on the screen.
 
+		//보드와 GameSession이 함께 쓸 Random
+		// 한 Random을 공유해야 시드 하나로 탄생·번식·잡초 생성의 결과가 모두 정해짐
+		Random random = new Random();
+
 		//보드 생성
+		// Resident 프로토타입에 Random을 넣으면 Neighborhood가 create()로 셀을 만들 때 같은 Random이 전달됨
 		Cell board = new Neighborhood
 						(	DEFAULT_GRID_SIZE,
 							new Neighborhood
 							(	DEFAULT_GRID_SIZE,
-								new Resident()
+								new Resident(random)	//기존 코드: new Resident()
 							)
 						);
 
 		//생성한 보드를 GameSession에 전달
 		// GameSession이 이후의 입력, 세대 진행 등을 계산
-		session = new GameSession(board);
+		session = new GameSession(board, random);	//기존 코드: new GameSession(board)
 
 		//session에서 넓이를 조회해 화면 크기 계산
 		final Dimension PREFERRED_SIZE =

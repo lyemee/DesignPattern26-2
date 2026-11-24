@@ -2,11 +2,14 @@ package com.holub.life.game;
 
 import com.holub.life.Cell;
 import com.holub.life.Storable;
+import com.holub.life.plant.PlantData;
+import com.holub.life.plant.PlantFactory;
 
 import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Random;
 
 //보드를 보유해 게임 조작의 진입점을 제공 (기존 Universe로 부터 책임 분리)
 public class GameSession
@@ -15,14 +18,44 @@ public class GameSession
     private final GenerationManager generationManager = new GenerationManager();
     //기본 모드는 Life game 원본
     private SimulationMode mode = SimulationMode.CONWAY;
-    public GameSession(Cell board){
+    //보드의 Resident 프로토타입과 같은 Random (Universe가 만들어 보드와 함께 전달) -> 테스트 용이성
+    // 세대 처리(GenerationManager)에 넘겨 번식 배치·잡초 생성의 무작위 선택에 사용
+    private final Random random;
+    //식물 선택 메뉴에서 고른 종류. 고르기 전에는 null -> 식물 모드에서 빈 칸을 눌러도 심지 않음
+    private PlantFactory selectedPlant = null;
+
+    //기존 코드
+    //public GameSession(Cell board){
+    //    this.board = board;
+    //}
+    public GameSession(Cell board, Random random){
         this.board = board;
+        this.random = random;
     }
 
+    //(수확 개수) 종류별 수확 개수 Map 자리. 키는 식물 종류 id
+
     //다음 상태 계산 도중 사용자의 클릭 처리와 같은 cell 변화가 영향을 미치지 않도록 synchronized로 락
+    //반환: 화면을 다시 그려야 하는지 (Universe는 true일 때만 refreshNow)
     public synchronized boolean nextGeneration(){
-        // generation manager 객체에게 다음 세대 처리 위임
-        return generationManager.nextGeneration(board);
+        //기존 코드
+        //return generationManager.nextGeneration(board);
+
+        //(Undo) 여기서 Snapshot 저장: 보드를 바꾸기 전 상태
+
+        // 1) 한 세대 처리 (① 계산 → ② 수집과 번식 배치 → ③ 반영)
+        GenerationResult result = generationManager.nextGeneration(board, random);
+
+        // 2) (수확 개수) result.harvested()를 종류별 개수에 더함
+
+        // 3) 식물 모드이고 잡초를 생성할 Tick이면 잡초 생성 (주기는 잡초 담당자가 정함)
+        //    1)의 결과와 무관하게 호출 -> 빈 보드에도 잡초가 생김
+        boolean weedSpawned = false;
+        //if(mode == SimulationMode.PLANT && 잡초 생성 Tick)
+        //    weedSpawned = generationManager.spawnWeeds(board, random, 잡초 Factory);
+
+        // 4) 세대 변화가 있거나 잡초만 생긴 Tick도 화면 갱신
+        return result.changed() || weedSpawned;
     }
 
     public synchronized SimulationMode getMode(){
@@ -37,12 +70,41 @@ public class GameSession
         this.mode = mode;
     }
 
+    //화면 진입점: Universe가 클릭한 픽셀 좌표와 화면 크기를 넘김
+    // 클릭 처리가 다음 세대 계산과 반영 사이에 끼어들지 않도록 synchronized
     public synchronized void userClicked(Point point, Rectangle bounds){
-        // 클릭 처리가 다음 세대 계산과 반영 사이에 끼어들지 않도록
-        if(mode == SimulationMode.CONWAY) //원본 동작
-            board.userClicked(point, bounds);
+        //기존 코드
+        //board.userClicked(point, bounds);
 
-        //PLANT 동작 구현 필요
+        // 1) 픽셀 → 셀 좌표
+        //    Universe가 화면을 보드 너비의 배수인 정사각형으로 맞추므로
+        //    원본 Neighborhood의 단계별 나눗셈과 같은 칸을 가리킴
+        int width    = board.widthInCells();
+        int cellSize = bounds.width / width;
+        if(cellSize == 0 || point.x < 0 || point.y < 0)   //칸 크기를 정할 수 없거나 왼쪽·위쪽 밖
+            return;                                     // (나누기 전에 검사: -1 / 8도 0이 되어 첫 줄로 처리됨)
+        int row    = point.y / cellSize;
+        int column = point.x / cellSize;
+        if(row >= width || column >= width)             //오른쪽·아래쪽 밖
+            return;
+
+        // 2) 모드에 맞는 동작(CellAction)을 만들어 apply 경로로 전달
+        //    apply가 목적지 셀까지 내려가며 지나간 블록을 활성화
+        if(mode == SimulationMode.CONWAY)
+            board.apply(row, column, cell -> cell.flipAlive());   //원본 동작
+        else
+            board.apply(row, column, cell -> {
+                if(cell.isAlive())                                          //식물 모드에서 살아 있는 칸 = 식물이 있는 칸
+                    cell.remove();                                          // -> 종류·단계와 상관없이 제거
+                else if(selectedPlant != null)
+                    cell.plant(new PlantData(selectedPlant.createPlant())); //빈 칸 -> 선택한 식물 심기
+                //식물을 고르지 않았으면 아무것도 하지 않음 (Conway 셀이 섞이지 않음)
+            });
+    }
+
+    //식물 선택 메뉴에서 호출 -> 이후 식물 모드 클릭은 이 종류를 심음
+    public synchronized void selectPlant(PlantFactory factory){
+        selectedPlant = factory;
     }
 
     public synchronized void clear(){
