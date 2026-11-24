@@ -30,6 +30,12 @@
         <!-- 폴더 구조: 소스는 src/, 테스트는 test/ -->
         <sourceDirectory>src</sourceDirectory>
         <testSourceDirectory>test</testSourceDirectory>
+        <!-- 그림 등 코드가 아닌 파일: resources/ (식물 그림은 resources/plant/) -->
+        <resources>
+            <resource>
+                <directory>resources</directory>
+            </resource>
+        </resources>
 
         <plugins>
             <!-- 컴파일 플러그인 (버전 고정: Maven 버전마다 기본 플러그인 버전이 달라 빌드 결과가 달라질 수 있음) -->
