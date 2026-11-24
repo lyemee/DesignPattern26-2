@@ -103,6 +103,14 @@ class PlantTypesTest
     }
 
     @Test
+    @DisplayName("해바라기: 상하좌우가 모두 막혀 있으면 뿌리지 않음")
+    void sunflowerBlocked()
+    {
+        Set<Point> occupied = Set.of(new Point(5, 4), new Point(5, 6), new Point(4, 5), new Point(6, 5));
+        assertTrue(new Sunflower().seedTargets(new Point(5, 5), field(10, occupied), new Random(0)).isEmpty());
+    }
+
+    @Test
     @DisplayName("민들레: 빈 보드에서 가로 3칸 씨앗 3개, 최대 9칸이고 모두 보드 안")
     void dandelionTargets()
     {
