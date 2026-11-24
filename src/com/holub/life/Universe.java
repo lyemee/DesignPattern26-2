@@ -230,7 +230,6 @@ public class Universe extends JPanel
 		for(SelectablePlant plant : SelectablePlant.values())
 		{
 			JToggleButton button = new JToggleButton( plant.label() );
-			button.setFocusable(false);
 			button.setEnabled( plant.isEnabled() );
 			if(!plant.isEnabled())
 				button.setToolTipText("추후 추가 예정");
