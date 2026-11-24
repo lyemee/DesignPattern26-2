@@ -17,7 +17,7 @@ public abstract class Plant {
     //현재 단계 후 다음 단계 계산
     public abstract PlantState nextState(PlantState current);
 
-    //단계별 화면 표시 (색상 없이 이모지로 표시하기로 함)
+    //단계별 화면 표시: resources/plant/ 아래 이모지 그림 파일 이름 (예: "apple.png")
     public abstract String getImage(PlantState state);
 
     // 번식 후보 좌표: 기본은 없음, Sunflower·Dandelion만 재정의

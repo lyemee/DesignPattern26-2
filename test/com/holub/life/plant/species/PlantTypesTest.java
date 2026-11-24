@@ -46,19 +46,37 @@ class PlantTypesTest
             assertEquals(TemporaryStage.FRUIT, tree.nextState(s));
             assertFalse(tree.blocksGrowth());
         }
-        assertEquals("🍎", new AppleTree().getImage(TemporaryStage.FRUIT));
-        assertEquals("🍊", new OrangeTree().getImage(TemporaryStage.FRUIT));
+        assertEquals("apple.png", new AppleTree().getImage(TemporaryStage.FRUIT));
+        assertEquals("orange.png", new OrangeTree().getImage(TemporaryStage.FRUIT));
     }
 
     @Test
-    @DisplayName("사과나무·오렌지나무: 시든 나무는 회복 시 일반 나무, 시든 이모지 표시")
+    @DisplayName("사과나무·오렌지나무: 시든 나무는 회복 시 일반 나무, 시든 나무 그림 표시")
     void witheredTree()
     {
         for (Plant tree : new Plant[]{ new AppleTree(), new OrangeTree() })
         {
             assertEquals(TemporaryStage.TREE, tree.nextState(TemporaryStage.WITHERED));
-            assertEquals("🍂", tree.getImage(TemporaryStage.WITHERED));
+            assertEquals("withered.png", tree.getImage(TemporaryStage.WITHERED));
         }
+    }
+
+    @Test
+    @DisplayName("식물 종류·단계별 그림 파일이 모두 resources/plant/에 있음")
+    void imageFilesExist()
+    {
+        Object[][] cases = {
+            { new AppleTree(),  new TemporaryStage[]{ TemporaryStage.SEED, TemporaryStage.SEEDLING, TemporaryStage.TREE, TemporaryStage.FRUIT, TemporaryStage.WITHERED } },
+            { new OrangeTree(), new TemporaryStage[]{ TemporaryStage.FRUIT } },
+            { new Sunflower(),  new TemporaryStage[]{ TemporaryStage.SEED, TemporaryStage.SEEDLING, TemporaryStage.FLOWER } },
+            { new Dandelion(),  new TemporaryStage[]{ TemporaryStage.FLOWER } },
+            { new Weed(),       new TemporaryStage[]{ TemporaryStage.WEED } } };
+        for (Object[] c : cases)
+            for (TemporaryStage stage : (TemporaryStage[]) c[1])
+            {
+                String file = ((Plant) c[0]).getImage(stage);
+                assertNotNull(getClass().getResource("/plant/" + file), c[0].getClass().getSimpleName() + " " + stage + " -> " + file);
+            }
     }
 
     @Test

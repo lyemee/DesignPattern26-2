@@ -24,9 +24,8 @@ public class Weed extends Plant {
         return true;
     }
 
-    //임시 이모지 (팀에서 확정 시 교체)
     @Override
     public String getImage(PlantState state) {
-        return "🌿";
+        return "weed.png";
     }
 }

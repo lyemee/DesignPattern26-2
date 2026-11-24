@@ -55,6 +55,6 @@ public class Dandelion extends FlowerPlant {
 
     @Override
     protected String flowerImage() {
-        return "🌼";
+        return "dandelion.png";
     }
 }
