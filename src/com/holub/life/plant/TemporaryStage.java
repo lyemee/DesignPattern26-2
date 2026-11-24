@@ -18,4 +18,10 @@ public enum TemporaryStage implements PlantState {
     public void onStep(PlantData next) {
         next.setState(next.getPlant().nextState(this));
     }
+
+    //생존 조건을 못 채웠을 때 바로 죽지 않고 시드는 단계: 나무·열매나무만
+    @Override
+    public boolean canWither() {
+        return this == TREE || this == FRUIT;
+    }
 }
