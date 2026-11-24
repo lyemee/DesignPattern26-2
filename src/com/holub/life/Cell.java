@@ -53,12 +53,27 @@ public interface Cell
 
 	void redraw(Graphics g, Rectangle here, boolean drawAll);
 
-	/** A user has clicked somewhere within you.
-	 *  @param here The position of the click relative to the bounding
-	 *  			rectangle of the current Cell.
-	 */
+	//기존 코드 (apply로 대체, 확인용으로 남겨 둠)
+	// 픽셀 좌표로 셀을 찾아가는 경로와 셀에서 하는 일(생존 여부 뒤집기)이 한 메서드에 묶여 있었음
+	///** A user has clicked somewhere within you.
+	// *  @param here The position of the click relative to the bounding
+	// *  			rectangle of the current Cell.
+	// */
+	//void userClicked(Point here, Rectangle surface);
 
-	void userClicked(Point here, Rectangle surface);
+	//(row, column) 셀까지 재귀로 내려가 action 실행 (원본 userClicked를 대체)
+	// row, column: 이 셀의 왼쪽 위 칸을 (0, 0)으로 하는 셀 좌표
+	// Neighborhood: 몇 번째 하위 셀인지 계산 -> 하위 셀 안의 좌표로 재귀 -> 블록 활성화, 경계 셀이면 경계 표시
+	// Resident: action.execute(this)
+	// DUMMY: 보드 밖이라 아무것도 하지 않음
+	void apply(int row, int column, CellAction action);
+
+	//모든 Resident가 자기 좌표와 함께 이번 step의 계산 결과를 report에 알림
+	// row, column: 이 셀의 왼쪽 위 칸이 보드에서 갖는 좌표
+	// Neighborhood: 하위 셀마다 좌표를 계산해 재귀 (읽기만 하고 상태는 바꾸지 않음)
+	// Resident: report.cell(), seeding(), harvested() 호출
+	// DUMMY: 아무것도 하지 않음
+	void collect(int row, int column, CellReport report);
 
 	/** Return true if this cell or any subcells are alive.
 	 */
@@ -148,7 +163,9 @@ public interface Cell
 		public int 		 widthInCells()  	{return 0;				  }
 		public boolean	 transition()		{return false;			  }
 
-		public void	userClicked(Point h, Rectangle s				){}
+		//public void	userClicked(Point h, Rectangle s				){}	//기존 코드 (apply로 대체)
+		public void apply(int r, int c, CellAction action			){}
+		public void collect(int r, int c, CellReport report			){}
 		public void redraw 		(Graphics g, Rectangle here,
 												 boolean drawAll	){}
 
