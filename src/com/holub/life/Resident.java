@@ -107,16 +107,20 @@ public final class Resident implements Cell
 		//현재 상태를 바탕으로 모든 셀을 계산하기 위해 current를 변경하지 않고 복사본 생성
 		PlantData next = currentPlantData.copy();
 
-		//다음 식물 상태 판정
-		boolean alive = lifecycle.applySurvival(next, ruleSatisfied);
-
 		//이웃 잡초 여부 계산
 		boolean growthBlocked = isWeed(north) || isWeed(northeast) || isWeed(northwest) || isWeed(east) ||
 								isWeed(south) || isWeed(southeast) || isWeed(southwest) || isWeed(west);
 
+		//성장 가능 여부는 생존 판정 전 단계로 판단
+		//  시든 나무 -> false -> 회복한 step에는 성장하지 않음
+		boolean canGrow = lifecycle.canGrow(next, ruleSatisfied, growthBlocked);
+
+		//다음 식물 상태 판정 (시듦·회복·사망, 회복은 이웃 잡초와 무관)
+		boolean alive = lifecycle.applySurvival(next, ruleSatisfied);
 
 		//살아있고 성장 가능한 상태에서 현재 state의 성장 동작 실행
-		if(alive && lifecycle.canGrow(next, ruleSatisfied, growthBlocked))
+		//  번식 차례의 꽃이 생존 조건을 못 채우면 onStep 없음 -> 번식 없이 사망
+		if(alive && canGrow)
 			next.getState().onStep(next);
 
 
