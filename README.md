@@ -18,3 +18,6 @@ command:
 ```
 mvn test
 ```
+
+## 그림 출처
+- 식물 그림(`resources/plant/`): [Twemoji](https://github.com/jdecked/twemoji) © Twitter, Inc and other contributors, [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
