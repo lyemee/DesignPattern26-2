@@ -51,6 +51,17 @@ class PlantTypesTest
     }
 
     @Test
+    @DisplayName("사과나무·오렌지나무: 시든 나무는 회복 시 일반 나무, 시든 이모지 표시")
+    void witheredTree()
+    {
+        for (Plant tree : new Plant[]{ new AppleTree(), new OrangeTree() })
+        {
+            assertEquals(TemporaryStage.TREE, tree.nextState(TemporaryStage.WITHERED));
+            assertEquals("🍂", tree.getImage(TemporaryStage.WITHERED));
+        }
+    }
+
+    @Test
     @DisplayName("해바라기·민들레: 씨앗 -> 새싹 -> 꽃, 꽃은 유지")
     void flowerPath()
     {

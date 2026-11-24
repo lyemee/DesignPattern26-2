@@ -9,6 +9,7 @@ public enum TemporaryStage implements PlantState {
     SEEDLING,   // 새싹
     TREE,       // 나무
     FRUIT,      // 열매나무
+    WITHERED,   // 시든 나무 (나무·열매나무만, 1턴 후 나무로 복귀하거나 사망)
     FLOWER,     // 꽃
     WEED;       // 잡초
 
