@@ -7,6 +7,7 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Random;
 
 import com.holub.io.Files;
@@ -18,6 +19,7 @@ import com.holub.life.Clock;
 import com.holub.life.Neighborhood;
 import com.holub.life.Resident;
 import com.holub.life.game.GameSession;
+import com.holub.life.plant.Plant;
 import com.holub.life.plant.factory.SelectablePlant;
 
 /**
@@ -37,6 +39,9 @@ public class Universe extends JPanel
 	//식물 선택 버튼 줄 (식물 모드에서만 보임), Life가 창 위쪽에 붙임
 	private final JToolBar plantBar = new JToolBar();
 	private final Map<SelectablePlant, JToggleButton> plantButtons = new EnumMap<>(SelectablePlant.class);
+
+	//수확량 표시 (버튼 줄 오른쪽): 과수 종류마다 [열매 그림] 개수
+	private final Map<Class<? extends Plant>, JLabel> harvestLabels = new LinkedHashMap<>();
 	private static	final Universe 	theInstance = new Universe();
 
 	/** The default height and width of a Neighborhood in cells.
@@ -188,6 +193,7 @@ public class Universe extends JPanel
 					//GameSession에 한 세대 진행 위임
 					if(session.nextGeneration())
 						refreshNow();
+					showHarvest( harvestCounts() );
 				}
 			}
 		);
@@ -198,6 +204,7 @@ public class Universe extends JPanel
 	{	Clock.instance().stop();		//정지
 		session.changeMode(mode);		//보드 비우기 -> 모드 변경
 		updateModeMenu();				//갱신
+		showHarvest( harvestCounts() );	//수확량 표시 갱신 (모드 전환 시 0으로 초기화는 수확 담당)
 		repaint();						//다시 그리기
 	}
 
@@ -232,6 +239,41 @@ public class Universe extends JPanel
 			plantButtons.put(plant, button);
 			plantBar.add(button);
 		}
+
+		//수확량: 과수 종류마다 [열매 그림] 0 (과수가 추가되면 자동으로 늘어남)
+		plantBar.addSeparator();
+		plantBar.add( new JLabel(" 수확: ") );
+		for(SelectablePlant plant : SelectablePlant.values())
+		{
+			if(!plant.isHarvestable())
+				continue;
+			JLabel label = new JLabel(" 0  ", fruitIcon(plant.fruitImage()), SwingConstants.LEFT);
+			harvestLabels.put(plant.plantType(), label);
+			plantBar.add(label);
+		}
+	}
+
+	// 수확량 표시용 열매 아이콘 (resources/plant/의 그림을 16px로)
+	private static Icon fruitIcon(String fileName)
+	{
+		java.net.URL url = (fileName == null) ? null : Universe.class.getResource("/plant/" + fileName);
+		if(url == null)
+			return null;
+		return new ImageIcon( new ImageIcon(url).getImage().getScaledInstance(16, 16, Image.SCALE_SMOOTH) );
+	}
+
+	// 과수 종류별 수확 개수를 화면에 표시 (없는 종류는 0)
+	private void showHarvest(Map<Class<? extends Plant>, Integer> counts)
+	{
+		for(Map.Entry<Class<? extends Plant>, JLabel> entry : harvestLabels.entrySet())
+			entry.getValue().setText(" " + counts.getOrDefault(entry.getKey(), 0) + "  ");
+	}
+
+	// 과수 종류별 수확 개수
+	// TODO 수확 담당(GameSession 수확 집계) 연결: 종류별 개수를 돌려주는 메서드가 생기면 여기서 호출
+	private Map<Class<? extends Plant>, Integer> harvestCounts()
+	{
+		return Map.of();
 	}
 
 	// 식물 모드에서만 버튼 줄을 보여 주고, 아직 아무것도 안 골랐으면 첫 번째 식물을 자동 선택

@@ -1,6 +1,9 @@
 package com.holub.life.plant.factory;
 
+import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantFactory;
+import com.holub.life.plant.TemporaryStage;
+import com.holub.life.plant.species.FruitTree;
 
 //사용자가 식물 선택 메뉴에서 고를 수 있는 식물 목록
 // - 잡초는 시스템만 생성하므로 목록에 없음
@@ -26,4 +29,17 @@ public enum SelectablePlant {
     public String label()           { return label; }
     public PlantFactory factory()   { return factory; }
     public boolean isEnabled()      { return enabled; }
+
+    //수확 대상(과수)인지 -> 수확량 표시 대상
+    public boolean isHarvestable()  { return factory.createPlant() instanceof FruitTree; }
+
+    //수확량 표시에 쓸 열매 그림 (과수가 아니면 null)
+    public String fruitImage()
+    {
+        Plant plant = factory.createPlant();
+        return (plant instanceof FruitTree) ? plant.getImage(TemporaryStage.FRUIT) : null;
+    }
+
+    //수확 개수를 셀 때 쓰는 식물 종류 (GenerationResult.harvested()의 Plant 클래스와 같음)
+    public Class<? extends Plant> plantType() { return factory.createPlant().getClass(); }
 }
