@@ -4,66 +4,53 @@ import com.holub.life.plant.SeedField;
 
 import java.awt.*;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 //민들레: 꽃 경로는 FlowerPlant가 정의
-//꽃이 된 다음 step에 멀리 떨어진 빈 위치 3곳에 씨앗(가로 3칸 blinker)을 뿌리고 소멸
+//꽃이 된 다음 step에 보드의 무작위 위치 3곳에 씨앗(가로 3칸 blinker)을 뿌리고 소멸
 public class Dandelion extends FlowerPlant {
 
-    //아래 값들은 요구사항 미정 -> 임시값 (확정 시 수정)
-    static final int MIN_DISTANCE = 15;     // 최소 거리 (맨해튼 거리 기준)
     static final int SEED_COUNT = 3;        // 씨앗 개수
     static final int SEED_LENGTH = 3;       // 씨앗 1개 = 가로로 연속된 3칸 (blinker)
 
-    //세 칸 모두 거리 MIN_DISTANCE 이상이고 비어 있는 자리를 먼저 전부 모은 뒤, 무작위 순서로 최대 SEED_COUNT곳 선택
-    //후보를 먼저 모으므로 실제로 자리가 부족할 때만 찾은 만큼 반환 (부분 번식, 임시 정책)
+    //씨앗마다 무작위 위치를 골라, 가로 3칸 중 빈 칸만 씨앗 자리로 반환
+    // - 위치: 거리 조건 없이 보드 전체에서 무작위 (3칸이 보드 안에 들어오는 위치만)
+    // - 3칸 중 빈 칸이 하나도 없으면 빈 칸이 나올 때까지 다시 고름
+    // - 일부 칸만 비어 있으면 빈 칸만 채움 (부분 생성)
+    // - 씨앗끼리 겹쳐도 됨, 겹친 칸은 한 번만 반환
     @Override
     public List<Point> seedTargets(Point position, SeedField field, Random random) {
-        List<List<Point>> candidates = new ArrayList<>();
+        Set<Point> targets = new LinkedHashSet<>();
+        for (int seed = 0; seed < SEED_COUNT; seed++)
+            targets.addAll(pickSeed(field, random));
+        return new ArrayList<>(targets);
+    }
+
+    //빈 칸이 하나 이상 있는 위치가 나올 때까지 다시 골라 그 위치의 빈 칸 반환
+    //보드에 빈 칸이 거의 없으면 끝나지 않을 수 있으므로, 보드 칸 수만큼 고른 뒤에는 이 씨앗을 포기 (안전장치)
+    private List<Point> pickSeed(SeedField field, Random random) {
         int width = field.widthInCells();
-        for (int y = 0; y < width; y++)
-            for (int x = 0; x < width; x++) {
-                List<Point> blinker = blinkerAt(x, y);
-                if (canSow(blinker, position, field))
-                    candidates.add(blinker);
-            }
+        if (width < SEED_LENGTH)
+            return List.of();
 
-        Collections.shuffle(candidates, random);
+        int maxTries = width * width;
+        for (int tries = 0; tries < maxTries; tries++) {
+            int x = random.nextInt(width - SEED_LENGTH + 1);   // 3칸이 보드 안에 들어오는 시작 위치
+            int y = random.nextInt(width);
 
-        List<Point> targets = new ArrayList<>();
-        int found = 0;
-        for (List<Point> blinker : candidates) {
-            if (found == SEED_COUNT)
-                break;
-            if (Collections.disjoint(blinker, targets)) {   // 이미 고른 씨앗과 겹치지 않을 때만
-                targets.addAll(blinker);
-                found++;
+            List<Point> empty = new ArrayList<>();
+            for (int i = 0; i < SEED_LENGTH; i++) {
+                Point cell = new Point(x + i, y);
+                if (field.isEmpty(cell))
+                    empty.add(cell);
             }
+            if (!empty.isEmpty())
+                return empty;
         }
-        return targets;
-    }
-
-    //(x, y)에서 시작하는 가로 3칸
-    private List<Point> blinkerAt(int x, int y) {
-        List<Point> blinker = new ArrayList<>();
-        for (int i = 0; i < SEED_LENGTH; i++)
-            blinker.add(new Point(x + i, y));
-        return blinker;
-    }
-
-    //씨앗의 모든 칸이 비어 있고, 모든 칸이 부모와 최소 거리 이상인지
-    private boolean canSow(List<Point> blinker, Point position, SeedField field) {
-        for (Point p : blinker)
-            if (!field.isEmpty(p) || distance(p, position) < MIN_DISTANCE)
-                return false;
-        return true;
-    }
-
-    //맨해튼 거리 (거리 기준 미정 -> 임시)
-    static int distance(Point a, Point b) {
-        return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+        return List.of();
     }
 
     @Override

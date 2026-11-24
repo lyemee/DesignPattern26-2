@@ -103,58 +103,58 @@ class PlantTypesTest
     }
 
     @Test
-    @DisplayName("민들레: 거리 15 이상 빈 칸에 가로 3칸 씨앗 3개(9칸)")
+    @DisplayName("민들레: 빈 보드에서 가로 3칸 씨앗 3개, 최대 9칸이고 모두 보드 안")
     void dandelionTargets()
     {
-        Point center = new Point(2, 2);
-        List<Point> targets = new Dandelion().seedTargets(center, field(64, Set.of()), new Random(42));
-
-        assertEquals(9, targets.size());
-        assertEquals(9, new HashSet<>(targets).size());     //겹치는 칸 없음
-        for (int i = 0; i < targets.size(); i += 3)
-        {
-            Point first = targets.get(i);
-            assertEquals(new Point(first.x + 1, first.y), targets.get(i + 1));
-            assertEquals(new Point(first.x + 2, first.y), targets.get(i + 2));
-        }
-        for (Point p : targets)
-            assertTrue(Dandelion.distance(p, center) >= Dandelion.MIN_DISTANCE);
-    }
-
-    @Test
-    @DisplayName("민들레: 부모 왼쪽 후보도 세 칸 모두 최소 거리 이상")
-    void dandelionDistanceForEveryCell()
-    {
-        Point center = new Point(32, 32);
         for (int seed = 0; seed < 50; seed++)
-            for (Point p : new Dandelion().seedTargets(center, field(64, Set.of()), new Random(seed)))
-                assertTrue(Dandelion.distance(p, center) >= Dandelion.MIN_DISTANCE, p + " 거리 부족");
+        {
+            List<Point> targets = new Dandelion().seedTargets(new Point(2, 2), field(16, Set.of()), new Random(seed));
+            assertTrue(targets.size() >= 3 && targets.size() <= 9, "칸 수 " + targets.size());
+            assertEquals(targets.size(), new HashSet<>(targets).size());    //겹친 칸은 한 번만
+            for (Point p : targets)
+                assertTrue(p.x >= 0 && p.x < 16 && p.y >= 0 && p.y < 16, p + " 보드 밖");
+        }
     }
 
     @Test
-    @DisplayName("민들레: 빈 자리가 드물어도 있으면 모두 찾아 뿌림")
-    void dandelionFindsSparseRoom()
+    @DisplayName("민들레: 이미 식물이 있는 칸은 고르지 않음")
+    void dandelionOnlyEmptyCells()
     {
-        Set<Point> empty = new HashSet<>();
-        for (int[] start : new int[][]{ {40, 40}, {45, 45}, {50, 50} })
-            for (int i = 0; i < 3; i++)
-                empty.add(new Point(start[0] + i, start[1]));
-
         Set<Point> occupied = new HashSet<>();
-        for (int y = 0; y < 64; y++)
-            for (int x = 0; x < 64; x++)
-                if (!empty.contains(new Point(x, y)))
+        for (int y = 0; y < 8; y++)
+            for (int x = 0; x < 8; x++)
+                if ((x + y) % 2 == 0)
+                    occupied.add(new Point(x, y));      //체스판 모양으로 절반을 채움
+
+        for (int seed = 0; seed < 50; seed++)
+            for (Point p : new Dandelion().seedTargets(new Point(0, 0), field(8, occupied), new Random(seed)))
+                assertFalse(occupied.contains(p), p + " 이미 식물이 있는 칸");
+    }
+
+    @Test
+    @DisplayName("민들레: 3칸 중 일부만 비어 있으면 빈 칸만 채움")
+    void dandelionPartialSeed()
+    {
+        //3x3 보드에서 가운데 (1,1)만 빈 칸 -> 어느 위치를 골라도 결과는 그 한 칸뿐
+        Set<Point> occupied = new HashSet<>();
+        for (int y = 0; y < 3; y++)
+            for (int x = 0; x < 3; x++)
+                if (!(x == 1 && y == 1))
                     occupied.add(new Point(x, y));
 
-        List<Point> targets = new Dandelion().seedTargets(new Point(2, 2), field(64, occupied), new Random(42));
-        assertEquals(empty, new HashSet<>(targets));
+        List<Point> targets = new Dandelion().seedTargets(new Point(0, 0), field(3, occupied), new Random(7));
+        assertEquals(List.of(new Point(1, 1)), targets);
     }
 
     @Test
-    @DisplayName("민들레: 조건을 만족하는 자리가 없으면 뿌리지 않음")
-    void dandelionNoRoom()
+    @DisplayName("민들레: 보드가 꽉 차 있으면 멈추지 않고 빈 결과")
+    void dandelionFullBoard()
     {
-        //보드가 작아 거리 15 이상인 칸이 없음
-        assertTrue(new Dandelion().seedTargets(new Point(2, 2), field(8, Set.of()), new Random(0)).isEmpty());
+        Set<Point> occupied = new HashSet<>();
+        for (int y = 0; y < 6; y++)
+            for (int x = 0; x < 6; x++)
+                occupied.add(new Point(x, y));
+
+        assertTrue(new Dandelion().seedTargets(new Point(0, 0), field(6, occupied), new Random(0)).isEmpty());
     }
 }
