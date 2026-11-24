@@ -32,6 +32,21 @@ class SelectablePlantTest
     }
 
     @Test
+    @DisplayName("수확량 표시 대상은 과수(사과나무·오렌지나무)뿐이고, 열매 그림을 가짐")
+    void harvestablePlants()
+    {
+        assertTrue(SelectablePlant.APPLE_TREE.isHarvestable());
+        assertTrue(SelectablePlant.ORANGE_TREE.isHarvestable());
+        assertFalse(SelectablePlant.SUNFLOWER.isHarvestable());
+        assertFalse(SelectablePlant.DANDELION.isHarvestable());
+
+        assertEquals("apple.png", SelectablePlant.APPLE_TREE.fruitImage());
+        assertEquals("orange.png", SelectablePlant.ORANGE_TREE.fruitImage());
+        assertNull(SelectablePlant.SUNFLOWER.fruitImage());
+        assertEquals(AppleTree.class, SelectablePlant.APPLE_TREE.plantType());
+    }
+
+    @Test
     @DisplayName("항목마다 해당 종류의 팩토리를 가짐")
     void matchingFactory()
     {
