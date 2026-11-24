@@ -193,7 +193,8 @@ public class Universe extends JPanel
 					//GameSession에 한 세대 진행 위임
 					if(session.nextGeneration())
 						refreshNow();
-					showHarvest( harvestCounts() );
+					//tick은 타이머 스레드에서 오므로 화면(Swing) 갱신은 EDT에서
+					SwingUtilities.invokeLater( () -> showHarvest( harvestCounts() ) );
 				}
 			}
 		);
