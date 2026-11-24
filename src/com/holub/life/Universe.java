@@ -5,6 +5,8 @@ import java.io.*;
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Random;
 
 import com.holub.io.Files;
@@ -16,6 +18,7 @@ import com.holub.life.Clock;
 import com.holub.life.Neighborhood;
 import com.holub.life.Resident;
 import com.holub.life.game.GameSession;
+import com.holub.life.plant.factory.SelectablePlant;
 
 /**
  * The Universe is a mediator that sits between the Swing
@@ -30,6 +33,10 @@ import com.holub.life.game.GameSession;
 
 public class Universe extends JPanel
 {	private 		final GameSession	session;	//GameSession 객체를 통해 게임 보드 관리
+
+	//식물 선택 버튼 줄 (식물 모드에서만 보임), Life가 창 위쪽에 붙임
+	private final JToolBar plantBar = new JToolBar();
+	private final Map<SelectablePlant, JToggleButton> plantButtons = new EnumMap<>(SelectablePlant.class);
 	private static	final Universe 	theInstance = new Universe();
 
 	/** The default height and width of a Neighborhood in cells.
@@ -170,6 +177,8 @@ public class Universe extends JPanel
 				}
 		);
 
+		buildPlantBar();
+
 		updateModeMenu();
 
 		Clock.instance().addClockListener //{=Universe.clock.subscribe}
@@ -198,6 +207,58 @@ public class Universe extends JPanel
 		SimulationMode mode = session.getMode();
 		MenuSite.getMyMenuItem(this, "Mode", "Conway").setEnabled( mode != SimulationMode.CONWAY );
 		MenuSite.getMyMenuItem(this, "Mode", "Plant" ).setEnabled( mode != SimulationMode.PLANT  );
+
+		updatePlantBar(mode);
+	}
+
+	// 식물 선택 버튼 줄 만들기: SelectablePlant 목록으로 버튼 생성 (잡초 제외)
+	// 버튼을 누르면 그 식물의 팩토리를 GameSession에 넘김 -> 이후 빈 칸 클릭 시 그 식물이 심김
+	private void buildPlantBar()
+	{
+		plantBar.setFloatable(false);
+		plantBar.add( new JLabel(" 심을 식물: ") );
+
+		ButtonGroup group = new ButtonGroup();		//한 번에 하나만 선택
+		for(SelectablePlant plant : SelectablePlant.values())
+		{
+			JToggleButton button = new JToggleButton( plant.label() );
+			button.setFocusable(false);
+			button.setEnabled( plant.isEnabled() );
+			if(!plant.isEnabled())
+				button.setToolTipText("추후 추가 예정");
+			button.addActionListener( e -> session.selectPlant( plant.factory() ) );
+
+			group.add(button);
+			plantButtons.put(plant, button);
+			plantBar.add(button);
+		}
+	}
+
+	// 식물 모드에서만 버튼 줄을 보여 주고, 아직 아무것도 안 골랐으면 첫 번째 식물을 자동 선택
+	// -> 식물 모드로 바꾸자마자 바로 칸을 눌러 심을 수 있음
+	private void updatePlantBar(SimulationMode mode)
+	{
+		boolean plantMode = (mode == SimulationMode.PLANT);
+		plantBar.setVisible(plantMode);
+
+		if(plantMode && plantButtons.values().stream().noneMatch(JToggleButton::isSelected))
+		{
+			for(SelectablePlant plant : SelectablePlant.values())
+				if(plant.isEnabled())
+				{	plantButtons.get(plant).doClick();
+					break;
+				}
+		}
+
+		//버튼 줄이 보이거나 사라지면 창 크기 다시 맞춤 (Life 창에 붙은 뒤에만)
+		Window window = SwingUtilities.getWindowAncestor(this);
+		if(window != null)
+			window.pack();
+	}
+
+	// Life가 창 위쪽(BorderLayout.NORTH)에 붙이는 식물 선택 버튼 줄
+	public JComponent plantToolbar()
+	{	return plantBar;
 	}
 
 
