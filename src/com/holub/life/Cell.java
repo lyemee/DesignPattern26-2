@@ -122,7 +122,7 @@ public interface Cell
 	}
 
 	//살아 있는 칸에 더해 식물 데이터(종류·단계·진행도)까지 저장하는 Memento (Undo용)
-	// 기존 transfer() 순회 경로를 그대로 쓰고, Resident가 이 타입일 때만 식물 데이터를 함께 주고받음
+	// 저장은 기존 transfer(STORE) 순회 경로를 그대로 쓰고, Resident가 이 타입일 때만 식물 데이터도 기록
 	// -> 기존 .life 저장(NeighborhoodState)은 영향 없음
 	interface PlantMemento extends Memento
 	{	//저장: 이 칸의 식물 데이터 기록
