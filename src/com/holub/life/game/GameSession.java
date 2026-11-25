@@ -20,7 +20,8 @@ import java.util.Random;
 public class GameSession
 {
     //Undo로 되돌릴 수 있는 최대 동작 수 (세대 진행·클릭·Clear·Load 각각 1개)
-    static final int MAX_UNDO = 100;
+    // 스냅샷은 보드 전체를 복사하므로 메모리를 적게 쓰도록 10개로 제한
+    static final int MAX_UNDO = 10;
 
     private final Cell board;
     private final GenerationManager generationManager;
