@@ -305,11 +305,7 @@ public final class Resident implements Cell
 	{
 		Memento memento = (Memento)blob;
 		if( doLoad )
-		{	//식물 데이터까지 담긴 Memento(Undo)면 식물도 복원 (현재·다음 세대를 같게 -> plant()와 같은 상태)
-			if( memento instanceof PlantMemento )
-				currentPlantData = nextPlantData = ((PlantMemento)memento).plantAt(upperLeft);
-
-			if( amAlive = willBeAlive = memento.isAlive(upperLeft) )
+		{	if( amAlive = willBeAlive = memento.isAlive(upperLeft) )
 				return true;
 		}
 		else if( amAlive )  					// store only live cells
