@@ -4,6 +4,7 @@ package com.holub.life.plant;
 import java.awt.*;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 //식물 종류의 공통 상위 클래스
 //구체 식물마다 달라지는 것: 시작 단계, 다음 단계, 행동
@@ -21,6 +22,13 @@ public abstract class Plant {
     public List<Point> seedTargets(Point position)
     {
         return Collections.emptyList();
+    }
+
+    //PR #3의 꽃 구현과 같은 계약. 기존 단일 인자 구현도 계속 사용할 수 있도록 위임한다.
+    //field는 현재 빈 칸 스냅샷이며, 반환된 좌표의 실제 배치·충돌 처리는 GenerationManager 책임.
+    public List<Point> seedTargets(Point position, SeedField field, Random random)
+    {
+        return seedTargets(position);
     }
 
     // 이웃 성장 억제: Weed만 true
