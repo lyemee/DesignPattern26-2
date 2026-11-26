@@ -302,8 +302,8 @@ public final class Resident implements Cell
 	}
 
 	//이번 step의 계산 결과를 자기 좌표와 함께 알림 (내부 필드는 밖에 내주지 않음)
-	// 번식: 규칙에 따른 다음 세대 계산 뒤, 다음 세대 실제 반영 전에 호출
-	// 잡초 생성: 다음 세대 반영 뒤에 호출
+	//번식·잡초 후보 수집: 다음 상태 계산 뒤, transition으로 실제 반영하기 전에 호출
+	//현재 점유 여부와 계산 결과를 함께 보고해 같은 현재 빈 칸 기준으로 후보를 경쟁시킨다.
 	public void collect(int row, int column, CellReport report)
 	{
 		report.currentCell(row, column, amAlive);

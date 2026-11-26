@@ -19,6 +19,10 @@ command:
 mvn test
 ```
 
+## 담당별 구현 보고서
+
+- [담당 4 번식 충돌 처리와 잡초 생성](docs/role4-implementation-report.md)
+
 ## 그림 출처
 - 식물 그림(`resources/plant/`, `seed.png`·`sprout.png`·`weed.png`·`dandelion.png` 제외): [Twemoji](https://github.com/jdecked/twemoji) © Twitter, Inc and other contributors, [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 - `seed.png`·`sprout.png`·`weed.png`·`dandelion.png`: 팀에서 직접 제작
