@@ -20,12 +20,25 @@ import java.util.Random;
 public class GenerationManager
 {
     private final CandidateSelectionPolicy<Candidate> selectionPolicy = new UniformSelectionPolicy<>();
+    private final CandidateSelectionPolicy<Point> positionPolicy = new UniformSelectionPolicy<>();
 
     //기존 코드: public boolean nextGeneration(Cell board) { ① 계산 → 변화 없으면 false → ③ 반영 }
     // -> 반환값을 GenerationResult로(수확 목록 추가), 번식 배치용 Random을 받도록 변경
 
     //한 세대 = ① 계산 → ② 수집과 번식 배치 → ③ 반영
     public GenerationResult nextGeneration(Cell board, Random random)
+    {
+        return advance(board, random, null);
+    }
+
+    //호출 측이 잡초를 생성할 tick에만 사용. Factory가 만든 잡초도 자동 생성 후보로 경쟁한다.
+    public GenerationResult nextGeneration(Cell board, Random random, PlantFactory weedFactory)
+    {
+        Objects.requireNonNull(weedFactory, "weedFactory");
+        return advance(board, random, weedFactory);
+    }
+
+    private GenerationResult advance(Cell board, Random random, PlantFactory weedFactory)
     {
         Objects.requireNonNull(board, "board");
         Objects.requireNonNull(random, "random");
@@ -39,9 +52,8 @@ public class GenerationManager
                 Cell.DUMMY, Cell.DUMMY
         );
 
-        // 변화 없음 → ②③ 없이 끝
-        //  식물 셀은 항상 "변화 있음"을 반환하므로, 여기서 끝나면 보드에 식물이 없다는 뜻 → 번식·수확도 없음
-        if (!needsTransition)
+        //기존 셀에 변화가 없어도 잡초 요청이 있으면 빈 칸을 수집한다. 빈 보드도 생성 가능.
+        if (!needsTransition && weedFactory == null)
             return GenerationResult.UNCHANGED;
 
         // ② 모든 셀의 현재 점유 여부와 계산 결과를 먼저 수집. 현재 값은 ③ 전까지 유지된다.
@@ -56,6 +68,13 @@ public class GenerationManager
                     new Point(request.column(), request.row()), snapshot, random))
                 if (snapshot.isEmpty(target))
                     snapshot.addCandidate(target, new Candidate(request.plant(), false));
+
+        //현재 빈 칸 하나를 균등 선택한 뒤 후보에만 추가. 기존 후보를 지우거나 즉시 심지 않는다.
+        if (weedFactory != null)
+            positionPolicy.select(snapshot.emptyPositions, random).ifPresent(target -> {
+                Plant weed = Objects.requireNonNull(weedFactory.createPlant(), "weed");
+                snapshot.addCandidate(target, new Candidate(weed, false));
+            });
 
         boolean seeded = false;
         for (Map.Entry<Point, List<Candidate>> entry : snapshot.candidates.entrySet())
@@ -74,6 +93,10 @@ public class GenerationManager
             }
         }
 
+        //안정 상태이고 빈 칸도 없어 잡초를 추가하지 못했다면 반영할 상태가 없다.
+        if (!needsTransition && !seeded)
+            return GenerationResult.UNCHANGED;
+
         // ③ 계산이 끝난 다음 상태를 반영
         boolean changed = board.transition();
         return new GenerationResult(changed || seeded, List.of());   //수확 목록 수집은 별도 작업
@@ -87,6 +110,7 @@ public class GenerationManager
     private static final class GenerationSnapshot implements CellReport, SeedField
     {
         private final boolean[][] empty;
+        private final List<Point> emptyPositions = new ArrayList<>();
         private final List<SeedingRequest> requests = new ArrayList<>();
         //삽입 순서를 유지해 같은 보고 순서·seed에서 난수 소비 순서도 재현한다.
         private final Map<Point, List<Candidate>> candidates = new LinkedHashMap<>();
@@ -100,6 +124,8 @@ public class GenerationManager
         public void currentCell(int row, int column, boolean alive)
         {
             empty[row][column] = !alive;
+            if (!alive)
+                emptyPositions.add(new Point(column, row));
         }
 
         @Override
@@ -136,15 +162,4 @@ public class GenerationManager
         }
     }
 
-    //빈 칸 중 무작위 한 칸에 잡초 생성 (언제 생성할지는 GameSession이 정함)
-    // ③ 반영 뒤에 호출: GameSession.nextGeneration()에서 nextGeneration()과 따로 호출
-    //  (여기서 nextGeneration() 안에 두면 ①의 조기 반환에 함께 건너뛰어져 빈 보드에 잡초가 생기지 않음)
-    //  1) board.collect(0, 0, report)로 빈 칸 목록 (cell()의 hasSurvivingPlant == false인 칸)
-    //     ③ 뒤라 current와 next가 같음 → 살아남는 식물이 없는 칸 = 현재 빈 칸
-    //  2) 빈 칸이 있으면 random으로 한 칸 → board.apply(행, 열, cell -> cell.plant(new PlantData(weedFactory.createPlant())))
-    //반환: 잡초를 생성했는지 (GameSession이 화면 갱신 여부에 반영)
-    public boolean spawnWeeds(Cell board, Random random, PlantFactory weedFactory)
-    {
-        throw new UnsupportedOperationException("잡초 생성 구현 필요");
-    }
 }

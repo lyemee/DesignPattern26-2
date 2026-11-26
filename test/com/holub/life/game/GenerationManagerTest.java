@@ -9,6 +9,7 @@ import com.holub.life.Resident;
 import com.holub.life.Storable;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantData;
+import com.holub.life.plant.PlantFactory;
 import com.holub.life.plant.PlantState;
 import com.holub.life.plant.SeedField;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -329,6 +331,211 @@ class GenerationManagerTest
         assertTrue(board.events.isEmpty());
     }
 
+    @Test
+    void weedCanBeCreatedOnAnEmptyInactiveBoard()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        board.needsTransition = false;
+        TestWeed weed = new TestWeed();
+        CountingFactory factory = new CountingFactory(weed);
+        ControlledRandom random = new ControlledRandom(255);
+
+        GenerationResult result = manager.nextGeneration(board, random, factory);
+
+        assertTrue(result.changed());
+        assertEquals(Map.of(new Point(15, 15), weed), board.placements);
+        assertEquals(List.of(256), random.bounds);
+        assertEquals(1, factory.calls);
+        assertEquals(1, weed.initialCalls);
+        assertTrue(board.isCurrentlyAlive(new Point(15, 15)));
+        assertEquals(List.of("calculate", "collect", "sow:15,15", "transition"), board.events);
+    }
+
+    @Test
+    void weedAlsoSpawnsThroughRealGenerationCalculationOnEmptyBoard()
+    {
+        Cell board = new Neighborhood(4, new Neighborhood(4, new Resident(new Random(42))));
+        TestWeed weed = new TestWeed();
+        ControlledRandom random = new ControlledRandom(73);
+
+        assertTrue(manager.nextGeneration(board, random, new CountingFactory(weed)).changed());
+
+        List<Point> occupied = new ArrayList<>();
+        board.collect(0, 0, new CellReport()
+        {
+            public void currentCell(int row, int column, boolean alive)
+            {
+                if (alive)
+                    occupied.add(new Point(column, row));
+            }
+        });
+        //4×4 블록 안의 4×4 셀을 순회하므로 0번 기준 73번째는 (열 1, 행 6)이다.
+        assertEquals(List.of(new Point(1, 6)), occupied);
+        assertEquals(List.of(256), random.bounds);
+        assertEquals(1, weed.initialCalls);
+    }
+
+    @Test
+    void fullBoardSkipsWeedFactoryPositionRandomAndUnnecessaryTransition()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        board.fillExcept(Set.of());
+        board.needsTransition = false;
+        CountingFactory factory = new CountingFactory(new TestWeed());
+        ControlledRandom random = new ControlledRandom();
+
+        assertSame(GenerationResult.UNCHANGED, manager.nextGeneration(board, random, factory));
+
+        assertEquals(0, factory.calls);
+        assertTrue(board.placements.isEmpty());
+        assertTrue(random.bounds.isEmpty());
+        assertEquals(List.of("calculate", "collect"), board.events);
+    }
+
+    @Test
+    void oneEmptyCellConsumesNeitherPositionNorSingleCandidateRandom()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Point target = new Point(9, 4);
+        board.fillExcept(Set.of(target));
+        TestWeed weed = new TestWeed();
+        CountingFactory factory = new CountingFactory(weed);
+        ControlledRandom random = new ControlledRandom();
+
+        manager.nextGeneration(board, random, factory);
+
+        assertEquals(Map.of(target, weed), board.placements);
+        assertTrue(random.bounds.isEmpty());
+        assertEquals(1, factory.calls);
+    }
+
+    @Test
+    void everyCurrentEmptyPositionIsSelectableAndDyingOccupiedCellIsExcluded()
+    {
+        Point first = new Point(3, 4);
+        Point second = new Point(4, 9);
+        Point dying = new Point(7, 7);
+        for (int index = 0; index < 2; index++)
+        {
+            ScriptedBoard board = new ScriptedBoard();
+            board.fillExcept(Set.of(first, second, dying));
+            board.delegate.apply(dying.y, dying.x, Resident::flipAlive);
+            TestWeed weed = new TestWeed();
+            ControlledRandom random = new ControlledRandom(index);
+
+            manager.nextGeneration(board, random, new CountingFactory(weed));
+
+            assertEquals(Map.of(index == 0 ? first : second, weed), board.placements);
+            assertEquals(List.of(2), random.bounds);
+            assertFalse(board.isCurrentlyAlive(dying));
+        }
+    }
+
+    @Test
+    void birthFlowerAndWeedEachCanWinWithNoSourcePriority()
+    {
+        Point target = new Point(9, 4);
+        for (int index = 0; index < 3; index++)
+        {
+            ScriptedBoard board = new ScriptedBoard();
+            board.fillExcept(Set.of(target));
+            TestFlower birth = new TestFlower(List.of());
+            TestFlower flower = new TestFlower(List.of(target));
+            TestWeed weed = new TestWeed();
+            board.births.put(target, birth);
+            board.reproduce(1, 1, flower);
+            CountingFactory factory = new CountingFactory(weed);
+            ControlledRandom random = new ControlledRandom(index);
+
+            manager.nextGeneration(board, random, factory);
+
+            assertEquals(List.of(3), random.bounds);
+            assertEquals(1, factory.calls);
+            assertEquals(1, birth.initialCalls);
+            assertTrue(board.isCurrentlyAlive(target));
+            if (index == 0)
+                assertTrue(board.placements.isEmpty());
+            else
+                assertSame(index == 1 ? flower : weed, board.placements.get(target));
+            assertEquals(index == 2 ? 1 : 0, weed.initialCalls);
+        }
+    }
+
+    @Test
+    void positionSelectionAndCollisionUseSeparateBoundedDraws()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Point target = new Point(9, 4);
+        Point other = new Point(4, 9);
+        board.fillExcept(Set.of(target, other));
+        TestFlower flower = new TestFlower(List.of(target));
+        board.reproduce(1, 1, flower);
+        TestWeed weed = new TestWeed();
+        ControlledRandom random = new ControlledRandom(0, 1);
+
+        manager.nextGeneration(board, random, new CountingFactory(weed));
+
+        assertEquals(List.of(2, 2), random.bounds);
+        assertEquals(Map.of(target, weed), board.placements);
+        assertFalse(board.isCurrentlyAlive(other));
+    }
+
+    @Test
+    void sameSeedReproducesWeedPositionsAndCompetitionAcrossRequestedTicks()
+    {
+        ScriptedBoard a = new ScriptedBoard();
+        ScriptedBoard b = new ScriptedBoard();
+        TestFlower flower = new TestFlower(List.of(new Point(3, 4), new Point(4, 3)));
+        a.reproduce(1, 1, flower);
+        b.reproduce(1, 1, flower);
+        TestWeed weed = new TestWeed();
+        CountingFactory firstFactory = new CountingFactory(weed);
+        CountingFactory secondFactory = new CountingFactory(weed);
+        Random first = new Random(42);
+        Random second = new Random(42);
+
+        for (int tick = 0; tick < 5; tick++)
+        {
+            manager.nextGeneration(a, first, firstFactory);
+            manager.nextGeneration(b, second, secondFactory);
+            assertEquals(a.placements, b.placements);
+        }
+        assertEquals(5, firstFactory.calls);
+        assertEquals(firstFactory.calls, secondFactory.calls);
+        assertEquals(first.nextLong(), second.nextLong());
+    }
+
+    @Test
+    void nullWeedFactoryIsRejectedBeforeBoardCalculation()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+
+        assertThrows(NullPointerException.class,
+                () -> manager.nextGeneration(board, new ControlledRandom(), null));
+        assertTrue(board.events.isEmpty());
+    }
+
+    private static final class TestWeed extends Plant
+    {
+        private final PlantState weedState = next -> {};
+        private int initialCalls;
+
+        public PlantState initialState() { initialCalls++; return weedState; }
+        public PlantState nextState(PlantState state) { return weedState; }
+        public boolean blocksGrowth() { return true; }
+        public String getImage(PlantState state) { return ""; }
+    }
+
+    private static final class CountingFactory extends PlantFactory
+    {
+        private final Plant plant;
+        private int calls;
+
+        private CountingFactory(Plant plant) { this.plant = plant; }
+
+        public Plant createPlant() { calls++; return plant; }
+    }
+
     private static class TestFlower extends Plant
     {
         private final List<Point> targets;
@@ -390,6 +597,18 @@ class GenerationManagerTest
         private void plant(Point point, Plant plant)
         {
             delegate.apply(point.y, point.x, cell -> cell.plant(new PlantData(plant)));
+        }
+
+        private void fillExcept(Set<Point> empty)
+        {
+            Plant blocker = new TestFlower(List.of());
+            for (int row = 0; row < widthInCells(); row++)
+                for (int column = 0; column < widthInCells(); column++)
+                {
+                    Point point = new Point(column, row);
+                    if (!empty.contains(point))
+                        plant(point, blocker);
+                }
         }
 
         private boolean isCurrentlyAlive(Point point)
