@@ -22,18 +22,11 @@ public abstract class Plant {
 
     // 번식 후보 좌표: 기본은 없음, Sunflower·Dandelion만 재정의
     // 후보만 돌려주고, 실제 배치와 충돌 조정은 GenerationManager에서 작업
-    //기존 단일 인자 계약을 유지하고 아래의 새 조회 계약에서 기본 동작으로 사용한다.
-    public List<Point> seedTargets(Point position)
-    {
-        return Collections.emptyList();
-    }
-
-    //PR #3의 꽃 구현과 같은 계약. 기존 단일 인자 구현도 계속 사용할 수 있도록 위임한다.
     //field는 현재 빈 칸 스냅샷이며, 반환된 좌표의 실제 배치·충돌 처리는 GenerationManager 책임.
     //해바라기·민들레 모두 현재 상태만 조회. 이번 step에 죽을 칸을 빈 칸으로 추가하지 않는다.
     public List<Point> seedTargets(Point position, SeedField field, Random random)
     {
-        return seedTargets(position);
+        return Collections.emptyList();
     }
 
     // 이웃 성장 억제: Weed만 true

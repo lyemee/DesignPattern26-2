@@ -3,7 +3,6 @@ package com.holub.life.plant;
 import org.junit.jupiter.api.Test;
 
 import java.awt.Point;
-import java.util.List;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,24 +28,6 @@ class PlantSeedTargetsTest
         };
 
         assertTrue(new TestPlant().seedTargets(new Point(1, 2), field, random).isEmpty());
-    }
-
-    @Test
-    void existingSingleArgumentOverrideRemainsUsableThroughNewContract()
-    {
-        List<Point> targets = List.of(new Point(3, 4));
-        Point source = new Point(1, 2);
-        Plant plant = new TestPlant()
-        {
-            @Override
-            public List<Point> seedTargets(Point position)
-            {
-                assertSame(source, position);
-                return targets;
-            }
-        };
-
-        assertSame(targets, plant.seedTargets(source, field, new Random(42)));
     }
 
     private static class TestPlant extends Plant
