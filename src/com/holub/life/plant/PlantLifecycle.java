@@ -14,8 +14,26 @@ public class PlantLifecycle {
     //(기존 주석: 사망 유예 카운터 방식 -> 시든 상태 1 step으로 확정되어 바꿈)
     public boolean applySurvival(PlantData next, boolean ruleSatisfied)
     {
-        // 구현 필요(일단 예외처리)
-        throw new UnsupportedOperationException("PlantLifecycle 구현 필요");
+        PlantState state = next.getState();
+
+        //시든 나무: 충족 -> 회복(나무 단계는 식물 종류가 정함), 불충족 -> 사망
+        if (state.isWithered()) {
+            if (!ruleSatisfied)
+                return false;
+            next.setState(next.getPlant().nextState(state));
+            return true;
+        }
+
+        if (ruleSatisfied)
+            return true;
+
+        //나무·열매나무: 외로움·과밀 모두 바로 죽지 않고 시듦
+        if (state.canWither()) {
+            next.setState(PlantStages.WITHERED);
+            return true;
+        }
+
+        return false;   //씨앗·새싹·꽃·잡초
     }
 
     //이번 step에 State의 onStep()을 실행할 수 있는지 (성장하면 매 step 바로 다음 단계)
@@ -23,8 +41,7 @@ public class PlantLifecycle {
     // 생존 규칙 충족, 이웃에 잡초 없음일 때만 true
     // applySurvival 전에 호출 -> 생존 판정 전 단계 기준 (시든 나무면 false -> 회복한 step에 바로 열매나무로 자라지 않음)
     public boolean canGrow(PlantData next, boolean ruleSatisfied, boolean growthBlocked){
-        // 구현 필요(일단 예외 처리)
-        throw new UnsupportedOperationException("PlantLifecycle 구현 필요");
+        return ruleSatisfied && !growthBlocked && !next.getState().isWithered();
     }
 
 }

@@ -4,7 +4,7 @@ import com.holub.life.Cell;
 import com.holub.life.Neighborhood;
 import com.holub.life.Resident;
 import com.holub.life.plant.PlantData;
-import com.holub.life.plant.TemporaryStage;
+import com.holub.life.plant.PlantStages;
 import com.holub.life.plant.species.AppleTree;
 import com.holub.life.plant.species.Sunflower;
 import org.junit.jupiter.api.DisplayName;
@@ -62,7 +62,7 @@ class BoardSnapshotTest
 
         PlantData restoredApple = restored.plantAt(new Point(3, 2));     //Point(x=열, y=행)
         assertTrue(restoredApple.getPlant() instanceof AppleTree);
-        assertEquals(TemporaryStage.SEEDLING, restoredApple.getState());
+        assertEquals(PlantStages.SEEDLING, restoredApple.getState());
         assertTrue(restored.plantAt(new Point(12, 9)).getPlant() instanceof Sunflower);
         assertNull(restored.plantAt(new Point(0, 0)));                   //식물 없던 칸
     }
@@ -77,7 +77,7 @@ class BoardSnapshotTest
         BoardSnapshot saved = BoardSnapshot.of(board);
 
         apple.getState().onStep(apple);                                  //저장 뒤 원본이 자라도
-        assertEquals(TemporaryStage.SEED, saved.plantAt(new Point(0, 0)).getState());   //스냅샷은 그대로
+        assertEquals(PlantStages.SEED, saved.plantAt(new Point(0, 0)).getState());   //스냅샷은 그대로
         assertNotSame(saved.plantAt(new Point(0, 0)), saved.plantAt(new Point(0, 0)));
     }
 
