@@ -509,6 +509,28 @@ class GenerationManagerTest
     }
 
     @Test
+    void weedPositionsAreRebuiltAfterThePreviousGenerationOccupiesACell()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Point first = new Point(3, 4);
+        Point second = new Point(4, 9);
+        board.fillExcept(Set.of(first, second));
+        TestWeed weed = new TestWeed();
+        CountingFactory factory = new CountingFactory(weed);
+        ControlledRandom random = new ControlledRandom(0);
+
+        manager.nextGeneration(board, random, factory);
+        assertEquals(Map.of(first, weed), board.placements);
+
+        manager.nextGeneration(board, random, factory);
+
+        assertEquals(Map.of(first, weed, second, weed), board.placements);
+        assertEquals(2, factory.calls);
+        assertEquals(List.of(2), random.bounds); //두 번째 세대에는 빈 칸이 하나라 추가 난수 없음
+        assertEquals(2, board.events.stream().filter("collect"::equals).count());
+    }
+
+    @Test
     void nullWeedFactoryIsRejectedBeforeBoardCalculation()
     {
         ScriptedBoard board = new ScriptedBoard();
