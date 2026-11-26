@@ -548,14 +548,14 @@ class GenerationManagerTest
         board.reproduce(2, 2, flower);
         Point dying = new Point(2, 1);
         board.delegate.apply(dying.y, dying.x, Resident::flipAlive);
-        ControlledRandom random = new ControlledRandom();
+        ControlledRandom random = new ControlledRandom(1);   //후보 [아래, 왼쪽, 오른쪽] 중 왼쪽
 
         manager.nextGeneration(board, random);
 
-        assertEquals(Map.of(new Point(2, 3), flower,
-                new Point(1, 2), flower, new Point(3, 2), flower), board.placements);
+        //해바라기는 빈 칸 중 1칸만 고름. 후보가 3개(bound 3) -> 죽어 가는 위쪽 칸은 후보에서 제외됨
+        assertEquals(Map.of(new Point(1, 2), flower), board.placements);
         assertFalse(board.isCurrentlyAlive(dying));
-        assertTrue(random.bounds.isEmpty());
+        assertEquals(List.of(3), random.bounds);
     }
 
     @Test

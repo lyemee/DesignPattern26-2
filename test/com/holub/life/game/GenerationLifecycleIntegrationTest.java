@@ -101,8 +101,9 @@ class GenerationLifecycleIntegrationTest
 
         new GenerationManager().nextGeneration(board, random);
 
+        //해바라기는 상하좌우 빈 칸 중 1칸 (난수 0 -> 첫 빈 칸, 순서: 위·아래·왼쪽·오른쪽)
+        //아래쪽 두 송이는 위가 현재 점유 중인 꽃이라 건너뛰고 아래 칸을 고름
         Set<Point> expected = Set.of(new Point(5, 4), new Point(6, 4),
-                new Point(4, 5), new Point(7, 5), new Point(4, 6), new Point(7, 6),
                 new Point(5, 7), new Point(6, 7));
         BoardSnapshot snapshot = BoardSnapshot.of(board);
         assertEquals(4, sunflower.targetRequests);
