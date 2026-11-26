@@ -21,6 +21,7 @@ import com.holub.life.Resident;
 import com.holub.life.game.GameSession;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.factory.SelectablePlant;
+import com.holub.life.plant.factory.WeedFactory;
 
 /**
  * The Universe is a mediator that sits between the Swing
@@ -38,6 +39,9 @@ public class Universe extends JPanel
 
 	//창 위쪽 버튼 줄 (Life가 붙임): Undo 버튼은 항상, 식물 선택·수확량은 식물 모드에서만 보임
 	private final JToolBar plantBar = new JToolBar();
+
+	//매 세대 잡초 후보를 요청할 Factory. 사용자 선택 식물과 분리해 한 번만 만든다.
+	private final WeedFactory weedFactory = new WeedFactory();
 	private final Map<SelectablePlant, JToggleButton> plantButtons = new EnumMap<>(SelectablePlant.class);
 
 	//Undo 버튼 (되돌릴 동작이 없으면 비활성)
@@ -202,8 +206,8 @@ public class Universe extends JPanel
 		(	new Clock.Listener()
 			{	public void tick()
 				{
-					//GameSession에 한 세대 진행 위임
-					if(session.nextGeneration())
+					//자동 실행·수동 진행 모두 매 세대 잡초 후보 요청. 일반 모드는 GameSession이 무시한다.
+					if(session.nextGeneration(weedFactory))
 						refreshNow();
 					//tick은 타이머 스레드에서 오므로 화면(Swing) 갱신은 EDT에서
 					SwingUtilities.invokeLater( () -> refreshControls() );

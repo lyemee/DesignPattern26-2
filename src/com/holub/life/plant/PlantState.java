@@ -13,4 +13,8 @@ public interface PlantState {
     //생존 조건을 못 채웠을 때 바로 죽지 않고 시드는 단계인지
     // 나무·열매나무 State만 true로 overriding -> PlantLifecycle이 종류·단계 검사 없이 판단
     default boolean canWither() { return false; }
+
+    //시든 나무 단계인지
+    // 시든 나무 State만 true로 overriding -> PlantLifecycle이 회복·사망을 판정, canGrow는 false
+    default boolean isWithered() { return false; }
 }
