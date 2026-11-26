@@ -4,6 +4,7 @@ import com.holub.life.Cell;
 import com.holub.life.CellReport;
 import com.holub.life.Neighborhood;
 import com.holub.life.Resident;
+import com.holub.life.history.BoardSnapshot;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantFactory;
 import com.holub.life.plant.PlantState;
@@ -22,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class GameSessionWeedTest
 {
     @Test
-    void ordinaryTicksDoNotCreateWeedCandidates()
+    void generationWithoutExplicitRequestDoesNotCreateWeedCandidates()
     {
         Fixture fixture = new Fixture();
         fixture.session.changeMode(SimulationMode.PLANT);
@@ -112,6 +113,54 @@ class GameSessionWeedTest
 
         assertEquals(1, factory.calls);
         assertEquals(1, fixture.occupied().size());
+    }
+
+    @Test
+    void eachRequestedGenerationCreatesOneWeedAndCanBeUndone()
+    {
+        Fixture fixture = new Fixture();
+        fixture.session.changeMode(SimulationMode.PLANT);
+        WeedFactory factory = new WeedFactory();
+
+        for (int generation = 1; generation <= 3; generation++)
+        {
+            //화면 tick과 같은 진입점. Undo로 빈 보드를 복원해 미구현 State의 다음 단계 계산은 피한다.
+            assertTrue(fixture.session.nextGeneration(factory));
+            assertEquals(List.of(new Point(0, 0)), fixture.occupied());
+            assertInstanceOf(Weed.class,
+                    BoardSnapshot.of(fixture.board).plantAt(new Point(0, 0)).getPlant());
+            assertEquals(generation, fixture.random.calls);
+            assertTrue(fixture.session.undo());
+            assertTrue(fixture.occupied().isEmpty());
+            assertFalse(fixture.session.canUndo());
+        }
+    }
+
+    @Test
+    void sharedTickEntryPointOnlyCreatesWeedsInPlantModeAcrossModeChanges()
+    {
+        Fixture fixture = new Fixture();
+        WeedFactory factory = new WeedFactory();
+
+        assertFalse(fixture.session.nextGeneration(factory));
+        assertEquals(0, fixture.random.calls);
+        assertFalse(fixture.session.canUndo());
+
+        fixture.session.changeMode(SimulationMode.PLANT);
+        assertTrue(fixture.session.nextGeneration(factory));
+        assertEquals(1, fixture.occupied().size());
+        assertEquals(1, fixture.random.calls);
+
+        fixture.session.changeMode(SimulationMode.CONWAY);
+        assertFalse(fixture.session.nextGeneration(factory));
+        assertTrue(fixture.occupied().isEmpty());
+        assertEquals(1, fixture.random.calls);
+        assertFalse(fixture.session.canUndo());
+
+        fixture.session.changeMode(SimulationMode.PLANT);
+        assertTrue(fixture.session.nextGeneration(factory));
+        assertEquals(1, fixture.occupied().size());
+        assertEquals(2, fixture.random.calls);
     }
 
     @Test

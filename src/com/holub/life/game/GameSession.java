@@ -71,7 +71,7 @@ public class GameSession
         return advance(null);
     }
 
-    //호출 측에서 잡초 후보를 만들 tick에만 Factory 전달. 일반 모드에서는 요청을 적용하지 않는다.
+    //Universe는 매 세대 이 경로로 잡초 후보를 요청한다. 일반 모드에서는 요청을 적용하지 않는다.
     //이 요청은 현재 tick에만 유효하며 사용자 드롭박스에서 선택한 식물과 무관하다.
     public synchronized boolean nextGeneration(PlantFactory weedFactory){
         return advance(Objects.requireNonNull(weedFactory, "weedFactory"));
