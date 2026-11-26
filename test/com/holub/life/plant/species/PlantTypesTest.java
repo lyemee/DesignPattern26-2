@@ -129,14 +129,16 @@ class PlantTypesTest
     }
 
     @Test
-    @DisplayName("민들레: 빈 보드에서 가로 3칸 씨앗 3개, 최대 9칸이고 모두 보드 안")
+    @DisplayName("민들레: 빈 보드에서 한 곳에 ㄱ자 모양 3칸, 모두 보드 안")
     void dandelionTargets()
     {
         for (int seed = 0; seed < 50; seed++)
         {
             List<Point> targets = new Dandelion().seedTargets(new Point(2, 2), field(16, Set.of()), new Random(seed));
-            assertTrue(targets.size() >= 3 && targets.size() <= 9, "칸 수 " + targets.size());
-            assertEquals(targets.size(), new HashSet<>(targets).size());    //겹친 칸은 한 번만
+            assertEquals(3, targets.size(), "칸 수 " + targets);
+            Point first = targets.get(0);
+            assertEquals(List.of(first, new Point(first.x + 1, first.y), new Point(first.x + 1, first.y + 1)),
+                         targets, "한 곳에 ㄱ자 모양 " + targets);
             for (Point p : targets)
                 assertTrue(p.x >= 0 && p.x < 16 && p.y >= 0 && p.y < 16, p + " 보드 밖");
         }
