@@ -17,4 +17,8 @@ public interface PlantState {
     //시든 나무 단계인지
     // 시든 나무 State만 true로 overriding -> PlantLifecycle이 회복·사망을 판정, canGrow는 false
     default boolean isWithered() { return false; }
+
+    //외로움(이웃 0~1개)으로는 죽지 않고 성장도 하는 단계인지 (과밀이면 기존대로 사망)
+    // 씨앗·새싹·꽃 State만 true로 overriding -> 혼자 뿌려진 씨앗도 꽃까지 자랄 수 있음
+    default boolean survivesLoneliness() { return false; }
 }
