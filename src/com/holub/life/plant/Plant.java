@@ -26,6 +26,7 @@ public abstract class Plant {
 
     //PR #3의 꽃 구현과 같은 계약. 기존 단일 인자 구현도 계속 사용할 수 있도록 위임한다.
     //field는 현재 빈 칸 스냅샷이며, 반환된 좌표의 실제 배치·충돌 처리는 GenerationManager 책임.
+    //해바라기·민들레 모두 현재 상태만 조회. 이번 step에 죽을 칸을 빈 칸으로 추가하지 않는다.
     public List<Point> seedTargets(Point position, SeedField field, Random random)
     {
         return seedTargets(position);
