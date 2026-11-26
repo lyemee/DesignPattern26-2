@@ -8,7 +8,6 @@ import com.holub.life.history.BoardSnapshot;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantFactory;
 import com.holub.life.plant.PlantState;
-import com.holub.life.plant.TemporaryStage;
 import com.holub.life.plant.factory.WeedFactory;
 import com.holub.life.plant.species.Weed;
 import org.junit.jupiter.api.Test;
@@ -59,9 +58,10 @@ class GameSessionWeedTest
         Plant weed = factory.createPlant();
 
         assertInstanceOf(Weed.class, weed);
-        assertEquals(TemporaryStage.WEED, weed.initialState());
         assertTrue(fixture.session.nextGeneration(factory));
         assertEquals(List.of(new Point(0, 0)), fixture.occupied());
+        assertSame(weed.initialState(),
+                BoardSnapshot.of(fixture.board).plantAt(new Point(0, 0)).getState());
         assertEquals(1, fixture.random.calls);
     }
 

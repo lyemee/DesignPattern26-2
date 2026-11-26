@@ -6,7 +6,6 @@ import com.holub.life.Resident;
 import com.holub.life.history.BoardSnapshot;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantFactory;
-import com.holub.life.plant.TemporaryStage;
 import com.holub.life.plant.factory.AppleTreeFactory;
 import com.holub.life.plant.factory.WeedFactory;
 import com.holub.life.plant.species.AppleTree;
@@ -32,7 +31,7 @@ class GameSessionGenerationIntegrationTest
 
         BoardSnapshot grown = BoardSnapshot.of(fixture.board);
         assertInstanceOf(Weed.class, grown.plantAt(new Point(0, 0)).getPlant());
-        assertEquals(TemporaryStage.WEED, grown.plantAt(new Point(0, 0)).getState());
+        assertSame(new Weed().initialState(), grown.plantAt(new Point(0, 0)).getState());
         assertTrue(fixture.session.canUndo());
         assertTrue(fixture.session.undo());
         assertTrue(BoardSnapshot.of(fixture.board).isEmpty());

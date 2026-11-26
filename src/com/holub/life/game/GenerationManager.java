@@ -60,6 +60,7 @@ public class GenerationManager
         GenerationSnapshot snapshot = new GenerationSnapshot(board.widthInCells());
         board.collect(0, 0, snapshot);
 
+        //꽃의 생존 조건·잡초 차단 판정은 Resident·State 책임이며 실제 보고된 번식 신호만 처리한다.
         //최종 요구사항 「번식 구현 / 3. 씨 뿌리기 / 공통 규칙」: 현재 죽어 있는 칸만 대상.
         //모든 꽃은 같은 현재 빈 칸 스냅샷을 조회. 후보 수집 중에는 보드를 변경하지 않는다.
         //해바라기·민들레 예외 없이 적용하며, 다음 생존 상태를 이용한 빈 칸 재계산은 하지 않는다.

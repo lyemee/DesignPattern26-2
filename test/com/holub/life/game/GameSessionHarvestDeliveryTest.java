@@ -9,7 +9,6 @@ import com.holub.life.Resident;
 import com.holub.life.Storable;
 import com.holub.life.history.BoardSnapshot;
 import com.holub.life.plant.Plant;
-import com.holub.life.plant.TemporaryStage;
 import com.holub.life.plant.factory.WeedFactory;
 import com.holub.life.plant.species.AppleTree;
 import com.holub.life.plant.species.OrangeTree;
@@ -58,7 +57,7 @@ class GameSessionHarvestDeliveryTest
 
         BoardSnapshot grown = BoardSnapshot.of(fixture.board);
         assertInstanceOf(Weed.class, grown.plantAt(new Point(0, 0)).getPlant());
-        assertEquals(TemporaryStage.WEED, grown.plantAt(new Point(0, 0)).getState());
+        assertSame(new Weed().initialState(), grown.plantAt(new Point(0, 0)).getState());
         assertEquals(Map.of(AppleTree.class, 1, OrangeTree.class, 1), fixture.session.harvestCounts());
         assertTrue(fixture.board.harvestEvents.isEmpty());
         assertEquals(1, fixture.random.calls); //위치 선택만 소비하고 수확 전달은 소비하지 않음

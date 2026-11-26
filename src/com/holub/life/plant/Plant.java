@@ -22,6 +22,7 @@ public abstract class Plant {
 
     // 번식 후보 좌표: 기본은 없음, Sunflower·Dandelion만 재정의
     // 후보만 돌려주고, 실제 배치와 충돌 조정은 GenerationManager에서 작업
+    //생존 조건을 충족하고 잡초에 막히지 않아 번식 신호가 보고된 꽃에만 호출한다.
     //field는 현재 빈 칸 스냅샷이며, 반환된 좌표의 실제 배치·충돌 처리는 GenerationManager 책임.
     //해바라기·민들레 모두 현재 상태만 조회. 이번 step에 죽을 칸을 빈 칸으로 추가하지 않는다.
     public List<Point> seedTargets(Point position, SeedField field, Random random)
