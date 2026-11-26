@@ -4,7 +4,7 @@ import com.holub.life.plant.Plant;
 
 //Cell.collect()가 셀마다 이번 step의 계산 결과를 알려 주는 용도 (GenerationManager가 구현)
 // 셀은 자기 사실만 알려 주고, 씨앗을 놓을 수 있는지 같은 판단은 받는 쪽이 함
-// 필요한 알림만 받도록 모두 빈 기본 구현 (예: 잡초 생성은 cell()만 사용)
+//필요한 알림만 받도록 모두 빈 기본 구현 (예: 현재 빈 칸 스냅샷은 currentCell()로 수집)
 public interface CellReport
 {
     //현재 세대의 점유 여부. 다음 상태 계산 후에도 transition 전까지 현재 값을 알린다.
