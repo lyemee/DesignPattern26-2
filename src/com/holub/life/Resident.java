@@ -309,7 +309,12 @@ public final class Resident implements Cell
 				return true;
 		}
 		else if( amAlive )  					// store only live cells
-			memento.markAsAlive( upperLeft );
+		{	memento.markAsAlive( upperLeft );
+
+			//식물이 있는 칸은 식물 데이터도 저장 (Undo용 Memento일 때만)
+			if( currentPlantData != null && memento instanceof PlantMemento )
+				((PlantMemento)memento).markPlant( upperLeft, currentPlantData );
+		}
 
 		return false;
 	}
