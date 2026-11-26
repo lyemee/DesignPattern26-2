@@ -59,11 +59,16 @@ class GenerationLifecycleIntegrationTest
         Cell board = newBoard(random);
         TrackingSunflower sunflower = new TrackingSunflower();
         board.apply(8, 8, cell -> cell.plant(matureFlower(sunflower)));
+        //외로운 꽃은 죽지 않으므로 과밀(이웃 4개)로 생존 조건을 못 채우게 함
+        board.apply(7, 7, cell -> cell.plant(new PlantData(new AppleTree())));
+        board.apply(7, 8, cell -> cell.plant(new PlantData(new AppleTree())));
+        board.apply(7, 9, cell -> cell.plant(new PlantData(new AppleTree())));
+        board.apply(8, 7, cell -> cell.plant(new PlantData(new AppleTree())));
 
         assertTrue(new GenerationManager().nextGeneration(board, random).changed());
 
         assertEquals(0, sunflower.targetRequests);
-        assertTrue(BoardSnapshot.of(board).isEmpty());
+        assertNull(BoardSnapshot.of(board).plantAt(new Point(8, 8)));
     }
 
     @Test

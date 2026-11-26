@@ -66,13 +66,13 @@ class ResidentPlantTest
     }
 
     @Test
-    @DisplayName("혼자 심은 씨앗은 규칙대로 다음 step에 사망 (이웃 0개 생존 규칙 없음)")
-    void loneSeedDies()
+    @DisplayName("혼자 심은 씨앗은 외로워도 죽지 않고 새싹으로 자람")
+    void loneSeedSurvivesAndGrows()
     {
         plant(new AppleTree(), 5, 5);
         step();
-        assertNull(plantAt(5, 5));
-        assertFalse(aliveAt(5, 5));
+        assertSame(PlantStages.SEEDLING, plantAt(5, 5).getState());
+        assertTrue(aliveAt(5, 5));
     }
 
     //--- B. 시듦·회복 ---
