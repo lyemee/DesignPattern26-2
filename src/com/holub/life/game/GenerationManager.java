@@ -71,7 +71,7 @@ public class GenerationManager
 
         //현재 빈 칸 하나를 균등 선택한 뒤 후보에만 추가. 기존 후보를 지우거나 즉시 심지 않는다.
         if (weedFactory != null)
-            positionPolicy.select(snapshot.emptyPositions, random).ifPresent(target -> {
+            positionPolicy.select(snapshot.emptyPositions(), random).ifPresent(target -> {
                 Plant weed = Objects.requireNonNull(weedFactory.createPlant(), "weed");
                 snapshot.addCandidate(target, new Candidate(weed, false));
             });
@@ -108,16 +108,19 @@ public class GenerationManager
     private record SeedingRequest(int row, int column, Plant plant) {}
 
     //한 세대만 사용하는 읽기 전용 현재 빈 칸 조회. 후보와 요청은 collect 완료 후 처리한다.
-    private static final class GenerationSnapshot implements CellReport, SeedField
+    static final class GenerationSnapshot implements CellReport, SeedField
     {
         private final boolean[][] empty;
-        private final List<Point> emptyPositions = new ArrayList<>();
+        //보고 순서를 정수 좌표로 보존하고 Point 목록은 잡초 추첨이 필요할 때만 만든다.
+        private int[] emptyCoordinates;
+        private int emptyCount;
+        private List<Point> emptyPositions;
         private final List<SeedingRequest> requests = new ArrayList<>();
         private final List<Plant> harvested = new ArrayList<>();
         //삽입 순서를 유지해 같은 보고 순서·seed에서 난수 소비 순서도 재현한다.
         private final Map<Point, List<Candidate>> candidates = new LinkedHashMap<>();
 
-        private GenerationSnapshot(int width)
+        GenerationSnapshot(int width)
         {
             empty = new boolean[width][width];
         }
@@ -127,7 +130,28 @@ public class GenerationManager
         {
             empty[row][column] = !alive;
             if (!alive)
-                emptyPositions.add(new Point(column, row));
+            {
+                if (emptyCoordinates == null)
+                    emptyCoordinates = new int[empty.length * empty.length];
+                emptyCoordinates[emptyCount++] = row * empty.length + column;
+            }
+        }
+
+        //collect 완료 후에만 사용한다. 같은 세대에서는 생성한 목록을 재사용한다.
+        //행·열 순서로 재순회하지 않아 기존 보고 순서와 난수 인덱스의 대응을 유지한다.
+        List<Point> emptyPositions()
+        {
+            if (emptyPositions == null)
+            {
+                List<Point> positions = new ArrayList<>(emptyCount);
+                for (int index = 0; index < emptyCount; index++)
+                {
+                    int coordinate = emptyCoordinates[index];
+                    positions.add(new Point(coordinate % empty.length, coordinate / empty.length));
+                }
+                emptyPositions = List.copyOf(positions);
+            }
+            return emptyPositions;
         }
 
         @Override
