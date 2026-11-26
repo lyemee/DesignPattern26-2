@@ -7,6 +7,10 @@ import com.holub.life.plant.Plant;
 // 필요한 알림만 받도록 모두 빈 기본 구현 (예: 잡초 생성은 cell()만 사용)
 public interface CellReport
 {
+    //현재 세대의 점유 여부. 다음 상태 계산 후에도 transition 전까지 현재 값을 알린다.
+    //일반 셀과 식물 셀 모두 alive이면 점유된 칸으로 취급한다.
+    default void currentCell(int row, int column, boolean alive) {}
+
     //칸에서 필요한 정보
     // hasSurvivingPlant: 다음 세대에도 살아 있는 식물이 있음
     // bornPlant: 이번에 새로 태어나는 식물 종류, 없으면 null

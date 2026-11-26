@@ -192,7 +192,7 @@ public final class Resident implements Cell
 
 	//빈 셀에 식물 심기 (식물 모드 클릭, 잡초 생성)
 	// 현재와 다음 상태를 함께 바꿈 -> 다음 계산에서 기존 식물로 취급
-	//  살아남으면 탄생·씨앗이 덮어쓰지 못하고, 생존 판정으로 죽으면 다른 사라지는 칸처럼 번식 대상이 됨
+	//  현재 점유된 칸은 이번 step의 꽃 번식 대상에서 제외 (이번 계산에서 죽더라도 제외)
 	public void plant(PlantData data){
 		currentPlantData = data;
 		nextPlantData = data;
@@ -306,6 +306,8 @@ public final class Resident implements Cell
 	// 잡초 생성: 다음 세대 반영 뒤에 호출
 	public void collect(int row, int column, CellReport report)
 	{
+		report.currentCell(row, column, amAlive);
+
 		//다음 세대에도 살아 있는 식물: 지금 식물이 있고 다음 상태에도 식물이 있음
 		boolean hasSurvivingPlant = currentPlantData != null && nextPlantData != null;
 		//이번에 태어나는 식물: 지금은 비어 있고 다음 상태에 식물이 있음 (규칙 탄생)
