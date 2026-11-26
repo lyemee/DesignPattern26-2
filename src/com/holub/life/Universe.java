@@ -58,11 +58,15 @@ public class Universe extends JPanel
 	 */
 	private static final int  DEFAULT_GRID_SIZE = 8;
 
+	//보드 바깥쪽 블록 수: 5 x 5 블록 (블록 하나는 DEFAULT_GRID_SIZE 칸) -> 40 x 40 칸
+	// 식물 그림이 보이도록 칸을 키우면서 창이 화면(약 800px)에 들어가게 칸 수를 줄임 (원래 8 -> 64 x 64 칸)
+	private static final int  BOARD_BLOCKS = 5;
+
 	/** The size of the smallest "atomic" cell---a Resident object.
 	 *  This size is extrinsic to a Resident (It's passed into the
 	 *  Resident's "draw yourself" method.
 	 */
-	private static final int  DEFAULT_CELL_SIZE = 12;
+	private static final int  DEFAULT_CELL_SIZE = 18;
 
 	// The constructor is private so that the universe can be created
 	// only by an outer-class method [Neighborhood.createUniverse()].
@@ -80,7 +84,7 @@ public class Universe extends JPanel
 		//보드 생성
 		// Resident 프로토타입에 Random을 넣으면 Neighborhood가 create()로 셀을 만들 때 같은 Random이 전달됨
 		Cell board = new Neighborhood
-						(	DEFAULT_GRID_SIZE,
+						(	BOARD_BLOCKS,
 							new Neighborhood
 							(	DEFAULT_GRID_SIZE,
 								new Resident(random)	//기존 코드: new Resident()
