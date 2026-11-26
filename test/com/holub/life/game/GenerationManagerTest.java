@@ -12,6 +12,8 @@ import com.holub.life.plant.PlantData;
 import com.holub.life.plant.PlantFactory;
 import com.holub.life.plant.PlantState;
 import com.holub.life.plant.SeedField;
+import com.holub.life.plant.species.AppleTree;
+import com.holub.life.plant.species.OrangeTree;
 import com.holub.life.plant.species.Sunflower;
 import org.junit.jupiter.api.Test;
 
@@ -534,6 +536,96 @@ class GenerationManagerTest
         assertTrue(random.bounds.isEmpty());
     }
 
+    @Test
+    void harvestEventsPreserveReportOrderOriginalPlantsAndRepeatedEntries()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Plant apple = new AppleTree();
+        Plant orange = new OrangeTree();
+        Plant anotherApple = new AppleTree();
+        board.harvestEvents.addAll(List.of(apple, orange, apple, anotherApple));
+        ControlledRandom random = new ControlledRandom();
+
+        GenerationResult result = manager.nextGeneration(board, random);
+
+        assertEquals(List.of(apple, orange, apple, anotherApple), result.harvested());
+        assertSame(apple, result.harvested().get(0));
+        assertSame(orange, result.harvested().get(1));
+        assertSame(apple, result.harvested().get(2));
+        assertSame(anotherApple, result.harvested().get(3));
+        assertTrue(board.harvestEvents.isEmpty(), "반영 후 원본 신호가 지워져도 결과는 보존");
+        assertTrue(random.bounds.isEmpty());
+        assertTrue(board.placements.isEmpty());
+        assertEquals(List.of("calculate", "collect", "transition"), board.events);
+    }
+
+    @Test
+    void generationWithoutHarvestReportsReturnsEmptyHarvestList()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        ControlledRandom random = new ControlledRandom();
+
+        GenerationResult result = manager.nextGeneration(board, random);
+
+        assertTrue(result.harvested().isEmpty());
+        assertTrue(random.bounds.isEmpty());
+    }
+
+    @Test
+    void returnedHarvestListCannotBeModifiedByCaller()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Plant apple = new AppleTree();
+        board.harvestEvents.add(apple);
+
+        GenerationResult result = manager.nextGeneration(board, new ControlledRandom());
+
+        assertThrows(UnsupportedOperationException.class,
+                () -> result.harvested().add(new OrangeTree()));
+        assertThrows(UnsupportedOperationException.class, () -> result.harvested().clear());
+        assertEquals(List.of(apple), result.harvested());
+    }
+
+    @Test
+    void harvestListsAreIsolatedAcrossGenerationsAndBoards()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Plant apple = new AppleTree();
+        Plant orange = new OrangeTree();
+        board.harvestEvents.add(apple);
+        GenerationResult first = manager.nextGeneration(board, new ControlledRandom());
+
+        board.harvestEvents.add(orange);
+        GenerationResult second = manager.nextGeneration(board, new ControlledRandom());
+        GenerationResult third = manager.nextGeneration(board, new ControlledRandom());
+        GenerationResult otherBoard = manager.nextGeneration(new ScriptedBoard(), new ControlledRandom());
+
+        assertEquals(List.of(apple), first.harvested());
+        assertEquals(List.of(orange), second.harvested());
+        assertTrue(third.harvested().isEmpty());
+        assertTrue(otherBoard.harvested().isEmpty());
+    }
+
+    @Test
+    void collectedHarvestSurvivesStableWeedRequestEvenWithoutEmptyPositions()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        board.fillExcept(Set.of());
+        board.needsTransition = false;
+        Plant apple = new AppleTree();
+        board.harvestEvents.add(apple);
+        CountingFactory factory = new CountingFactory(new TestWeed());
+        ControlledRandom random = new ControlledRandom();
+
+        GenerationResult result = manager.nextGeneration(board, random, factory);
+
+        assertNotSame(GenerationResult.UNCHANGED, result);
+        assertEquals(List.of(apple), result.harvested());
+        assertEquals(0, factory.calls);
+        assertTrue(random.bounds.isEmpty());
+        assertTrue(board.placements.isEmpty());
+    }
+
     private static final class TestWeed extends Plant
     {
         private final PlantState weedState = next -> {};
@@ -601,6 +693,7 @@ class GenerationManagerTest
         private final Cell delegate = new Neighborhood(4,
                 new Neighborhood(4, new Resident(new Random(42))));
         private final List<Request> requests = new ArrayList<>();
+        private final List<Plant> harvestEvents = new ArrayList<>();
         private final Map<Point, Plant> births = new LinkedHashMap<>();
         private final Map<Point, Plant> placements = new LinkedHashMap<>();
         private final List<String> events = new ArrayList<>();
@@ -663,6 +756,8 @@ class GenerationManagerTest
             for (Request request : requests)
                 report.seeding(request.row(), request.column(), request.plant());
             delegate.collect(row, column, report);
+            for (Plant harvested : harvestEvents)
+                report.harvested(harvested);
             collected = true;
         }
 
@@ -691,6 +786,7 @@ class GenerationManagerTest
         public boolean transition()
         {
             events.add("transition");
+            harvestEvents.clear();
             return delegate.transition();
         }
 

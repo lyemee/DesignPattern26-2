@@ -93,13 +93,14 @@ public class GenerationManager
             }
         }
 
-        //안정 상태이고 빈 칸도 없어 잡초를 추가하지 못했다면 반영할 상태가 없다.
-        if (!needsTransition && !seeded)
+        //안정 상태이고 씨앗·수확 이벤트도 없으면 반영하거나 전달할 결과가 없다.
+        if (!needsTransition && !seeded && snapshot.harvested.isEmpty())
             return GenerationResult.UNCHANGED;
 
         // ③ 계산이 끝난 다음 상태를 반영
         boolean changed = board.transition();
-        return new GenerationResult(changed || seeded, List.of());   //수확 목록 수집은 별도 작업
+        //transition이 셀의 신호를 지워도 수집한 이벤트는 유지한다. 원본 Plant와 중복은 보존한다.
+        return new GenerationResult(changed || seeded, List.copyOf(snapshot.harvested));
     }
 
     //born은 출처별 우선순위가 아니라, 기존 탄생 계산 결과를 보존하기 위한 구분이다.
@@ -112,6 +113,7 @@ public class GenerationManager
         private final boolean[][] empty;
         private final List<Point> emptyPositions = new ArrayList<>();
         private final List<SeedingRequest> requests = new ArrayList<>();
+        private final List<Plant> harvested = new ArrayList<>();
         //삽입 순서를 유지해 같은 보고 순서·seed에서 난수 소비 순서도 재현한다.
         private final Map<Point, List<Candidate>> candidates = new LinkedHashMap<>();
 
@@ -139,6 +141,12 @@ public class GenerationManager
         public void seeding(int row, int column, Plant plant)
         {
             requests.add(new SeedingRequest(row, column, plant));
+        }
+
+        @Override
+        public void harvested(Plant plant)
+        {
+            harvested.add(Objects.requireNonNull(plant, "harvested plant"));
         }
 
         private void addCandidate(Point target, Candidate candidate)
