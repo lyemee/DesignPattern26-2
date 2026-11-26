@@ -362,8 +362,25 @@ public class Universe extends JPanel
 	private void doLoad()
 	{	try
 		{
-			FileInputStream in = new FileInputStream(
-			   Files.userSelected(".",".life","Life File","Load"));
+			File file = Files.userSelected(".",".life","Life File","Load");
+
+			//보드 크기가 바뀌어(64x64 -> 40x40) 예전 파일의 일부 칸이 보드 밖일 수 있음
+			// -> 잘리는 칸이 있으면 알리고, 사용자가 동의할 때만 불러옴
+			int outside;
+			try( FileInputStream check = new FileInputStream(file) )
+			{	outside = LifeFileInspector.countOutside(check, session.widthInCells());
+			}
+			if( outside > 0 )
+			{	int answer = JOptionPane.showConfirmDialog( null,
+						"이 파일에는 현재 보드(" + session.widthInCells() + "x" + session.widthInCells()
+						+ ") 밖에 있는 살아 있는 칸이 " + outside + "개 있습니다.\n"
+						+ "불러오면 이 칸들은 빠집니다. 계속할까요?",
+						"The Game of Life", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE );
+				if( answer != JOptionPane.YES_OPTION )
+					return;
+			}
+
+			FileInputStream in = new FileInputStream(file);
 
 			Clock.instance().stop();		// stop the game and
 
