@@ -9,6 +9,7 @@ import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Objects;
 import java.util.Random;
 
 //보드를 보유해 게임 조작의 진입점을 제공 (기존 Universe로 부터 책임 분리)
@@ -38,24 +39,29 @@ public class GameSession
     //다음 상태 계산 도중 사용자의 클릭 처리와 같은 cell 변화가 영향을 미치지 않도록 synchronized로 락
     //반환: 화면을 다시 그려야 하는지 (Universe는 true일 때만 refreshNow)
     public synchronized boolean nextGeneration(){
-        //기존 코드
-        //return generationManager.nextGeneration(board);
+        return advance(null);
+    }
+
+    //호출 측에서 잡초 후보를 만들 tick에만 Factory 전달. 일반 모드에서는 요청을 적용하지 않는다.
+    //이 요청은 현재 tick에만 유효하며 사용자 드롭박스에서 선택한 식물과 무관하다.
+    public synchronized boolean nextGeneration(PlantFactory weedFactory){
+        return advance(Objects.requireNonNull(weedFactory, "weedFactory"));
+    }
+
+    //두 synchronized 진입점에서만 호출해 계산·후보 경쟁·반영 사이에 클릭이 끼어들지 않도록 한다.
+    private boolean advance(PlantFactory weedFactory){
 
         //(Undo) 여기서 Snapshot 저장: 보드를 바꾸기 전 상태
 
-        // 1) 한 세대 처리 (① 계산 → ② 수집과 번식 배치 → ③ 반영)
-        GenerationResult result = generationManager.nextGeneration(board, random);
+        // 1) 한 세대 처리 (① 계산 → ② 꽃·일반 탄생·요청된 잡초 후보의 균등 경쟁 → ③ 반영)
+        GenerationResult result = mode == SimulationMode.PLANT && weedFactory != null
+                ? generationManager.nextGeneration(board, random, weedFactory)
+                : generationManager.nextGeneration(board, random);
 
         // 2) (수확 개수) result.harvested()를 종류별 개수에 더함
 
-        // 3) 식물 모드이고 잡초를 생성할 Tick이면 잡초 생성 (주기는 잡초 담당자가 정함)
-        //    1)의 결과와 무관하게 호출 -> 빈 보드에도 잡초가 생김
-        boolean weedSpawned = false;
-        //if(mode == SimulationMode.PLANT && 잡초 생성 Tick)
-        //    weedSpawned = generationManager.spawnWeeds(board, random, 잡초 Factory);
-
-        // 4) 세대 변화가 있거나 잡초만 생긴 Tick도 화면 갱신
-        return result.changed() || weedSpawned;
+        // 3) 잡초가 선택된 경우도 1)의 결과에 포함. 반영 뒤 별도로 생성하지 않는다.
+        return result.changed();
     }
 
     public synchronized SimulationMode getMode(){
