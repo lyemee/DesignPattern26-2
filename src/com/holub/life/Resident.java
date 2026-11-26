@@ -12,6 +12,8 @@ import com.holub.life.Universe;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantData;
 import com.holub.life.plant.PlantLifecycle;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 /*** ****************************************************************
@@ -94,11 +96,25 @@ public final class Resident implements Cell
 
 		//식물이 없는 셀 -> 원래의 규칙
 		if(currentPlantData == null){
-			//구현 필요: 탄생 조건을 만족하고 이웃에 식물이 있으면 이웃 3개 중 무작위 1개의 종류로 탄생 (random 사용)
-			//    이웃에 식물이 없으면 아래 원본 규칙 그대로
+			seedingPlant = harvestedPlant = null;
+
+			//규칙 탄생: 탄생 조건을 만족하고 이웃에 식물이 있으면 이웃 식물 중 무작위 1개의 종류로 탄생
+			// 이웃 칸 하나를 고르는 방식 -> 사과 2 + 오렌지 1이면 사과 2/3 (이웃 3개 중 무작위 1개)
+			// 씨앗과의 충돌은 GenerationManager ②에서 bornPlant를 후보로 함께 골라 결정
+			if(!amAlive && ruleSatisfied){
+				List<Plant> parents = plantNeighbors(north, south, east, west,
+													 northeast, northwest, southeast, southwest);
+				if(!parents.isEmpty()){
+					Plant parent = parents.get(random.nextInt(parents.size()));
+					willBeAlive   = true;
+					nextPlantData = new PlantData(parent);	//Plant는 공유 객체 -> 부모 종류 그대로, 시작 단계부터
+					return true;
+				}
+			}
+
+			//이웃에 식물이 없으면 원본 규칙 그대로 (일반 모드)
 			willBeAlive = ruleSatisfied;
 			nextPlantData = null;
-			seedingPlant = harvestedPlant = null;
 			return !isStable();
 		}
 
@@ -127,7 +143,9 @@ public final class Resident implements Cell
 		//State가 표시한 신호를 기록 (collect애서 전달)
 		seedingPlant   = next.reproduces() ? next.getPlant() : null;
 		harvestedPlant = next.harvested()  ? next.getPlant() : null;
-		//구현 필요: next.removed()면 사망 처리 (번식한 꽃의 소멸)
+		//번식한 꽃은 씨를 뿌리고 소멸 (seedingPlant는 위에서 기록했으므로 ②에서 씨를 뿌림)
+		if(next.removed())
+			alive = false;
 
 		//다음 생존 여부와 plantData 업데이트
 		willBeAlive = alive;
@@ -136,6 +154,22 @@ public final class Resident implements Cell
 
 		//plant -> 생존 여부가 그대로여도 내부 상태가 변함 -> 항상 변경 계산(최적화 필요 시 수정)
 		return true;
+	}
+
+	//살아 있는 이웃 중 식물이 있는 칸의 종류 목록 (규칙 탄생 후보, 잡초 포함)
+	private static List<Plant> plantNeighbors(Cell... neighbors){
+		List<Plant> plants = new ArrayList<>();
+		for(Cell c : neighbors)
+			if(c instanceof Resident && c.isAlive() && ((Resident)c).currentPlantData != null)
+				plants.add(((Resident)c).currentPlantData.getPlant());
+		return plants;
+	}
+
+	//현재 세대의 식물 데이터 (없으면 null)
+	// 같은 패키지 안에서만 읽기용: 테스트가 apply로 칸에 내려가 단계를 확인할 때 사용
+	PlantData plantData()
+	{
+		return currentPlantData;
 	}
 
 	//이웃이 잡초인지 확인
