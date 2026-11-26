@@ -3,7 +3,7 @@ package com.holub.life.plant.species;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantState;
 import com.holub.life.plant.SeedField;
-import com.holub.life.plant.TemporaryStage;
+import com.holub.life.plant.PlantStages;
 
 import java.awt.*;
 import java.util.List;
@@ -17,22 +17,22 @@ public abstract class FlowerPlant extends Plant {
 
     @Override
     public final PlantState initialState() {
-        return TemporaryStage.SEED;
+        return PlantStages.SEED;
     }
 
     @Override
     public final PlantState nextState(PlantState current) {
-        if (current == TemporaryStage.SEED)     return TemporaryStage.SEEDLING;
-        if (current == TemporaryStage.SEEDLING) return TemporaryStage.FLOWER;
+        if (current == PlantStages.SEED)     return PlantStages.SEEDLING;
+        if (current == PlantStages.SEEDLING) return PlantStages.FLOWER;
         return current;     // 꽃은 꽃 유지 (소멸은 씨 뿌린 뒤 외부에서 처리), 모르는 단계도 유지
     }
 
     //단계별 그림 파일 (resources/plant/) - 꽃 단계만 종류별로 다름
     @Override
     public final String getImage(PlantState state) {
-        if (state == TemporaryStage.SEED)     return PlantImages.SEED;
-        if (state == TemporaryStage.SEEDLING) return PlantImages.SPROUT;
-        if (state == TemporaryStage.FLOWER)   return flowerImage();
+        if (state == PlantStages.SEED)     return PlantImages.SEED;
+        if (state == PlantStages.SEEDLING) return PlantImages.SPROUT;
+        if (state == PlantStages.FLOWER)   return flowerImage();
         return null;                                                // 모르는 단계는 그리지 않음
     }
 

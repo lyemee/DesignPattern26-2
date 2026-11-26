@@ -3,7 +3,7 @@ package com.holub.life.plant.species;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantState;
 import com.holub.life.plant.SeedField;
-import com.holub.life.plant.TemporaryStage;
+import com.holub.life.plant.PlantStages;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,16 +38,16 @@ class PlantTypesTest
         for (Plant tree : new Plant[]{ new AppleTree(), new OrangeTree() })
         {
             PlantState s = tree.initialState();
-            assertEquals(TemporaryStage.SEED, s);
-            assertEquals(TemporaryStage.SEEDLING, s = tree.nextState(s));
-            assertEquals(TemporaryStage.TREE, s = tree.nextState(s));
-            assertEquals(TemporaryStage.FRUIT, s = tree.nextState(s));
-            assertEquals(TemporaryStage.TREE, s = tree.nextState(s));
-            assertEquals(TemporaryStage.FRUIT, tree.nextState(s));
+            assertEquals(PlantStages.SEED, s);
+            assertEquals(PlantStages.SEEDLING, s = tree.nextState(s));
+            assertEquals(PlantStages.TREE, s = tree.nextState(s));
+            assertEquals(PlantStages.FRUIT, s = tree.nextState(s));
+            assertEquals(PlantStages.TREE, s = tree.nextState(s));
+            assertEquals(PlantStages.FRUIT, tree.nextState(s));
             assertFalse(tree.blocksGrowth());
         }
-        assertEquals("apple.png", new AppleTree().getImage(TemporaryStage.FRUIT));
-        assertEquals("orange.png", new OrangeTree().getImage(TemporaryStage.FRUIT));
+        assertEquals("apple.png", new AppleTree().getImage(PlantStages.FRUIT));
+        assertEquals("orange.png", new OrangeTree().getImage(PlantStages.FRUIT));
     }
 
     @Test
@@ -56,8 +56,8 @@ class PlantTypesTest
     {
         for (Plant tree : new Plant[]{ new AppleTree(), new OrangeTree() })
         {
-            assertEquals(TemporaryStage.TREE, tree.nextState(TemporaryStage.WITHERED));
-            assertEquals("withered.png", tree.getImage(TemporaryStage.WITHERED));
+            assertEquals(PlantStages.TREE, tree.nextState(PlantStages.WITHERED));
+            assertEquals("withered.png", tree.getImage(PlantStages.WITHERED));
         }
     }
 
@@ -66,13 +66,13 @@ class PlantTypesTest
     void imageFilesExist()
     {
         Object[][] cases = {
-            { new AppleTree(),  new TemporaryStage[]{ TemporaryStage.SEED, TemporaryStage.SEEDLING, TemporaryStage.TREE, TemporaryStage.FRUIT, TemporaryStage.WITHERED } },
-            { new OrangeTree(), new TemporaryStage[]{ TemporaryStage.FRUIT } },
-            { new Sunflower(),  new TemporaryStage[]{ TemporaryStage.SEED, TemporaryStage.SEEDLING, TemporaryStage.FLOWER } },
-            { new Dandelion(),  new TemporaryStage[]{ TemporaryStage.FLOWER } },
-            { new Weed(),       new TemporaryStage[]{ TemporaryStage.WEED } } };
+            { new AppleTree(),  new PlantState[]{ PlantStages.SEED, PlantStages.SEEDLING, PlantStages.TREE, PlantStages.FRUIT, PlantStages.WITHERED } },
+            { new OrangeTree(), new PlantState[]{ PlantStages.FRUIT } },
+            { new Sunflower(),  new PlantState[]{ PlantStages.SEED, PlantStages.SEEDLING, PlantStages.FLOWER } },
+            { new Dandelion(),  new PlantState[]{ PlantStages.FLOWER } },
+            { new Weed(),       new PlantState[]{ PlantStages.WEED } } };
         for (Object[] c : cases)
-            for (TemporaryStage stage : (TemporaryStage[]) c[1])
+            for (PlantState stage : (PlantState[]) c[1])
             {
                 String file = ((Plant) c[0]).getImage(stage);
                 assertNotNull(getClass().getResource("/plant/" + file), c[0].getClass().getSimpleName() + " " + stage + " -> " + file);
@@ -86,10 +86,10 @@ class PlantTypesTest
         for (Plant flower : new Plant[]{ new Sunflower(), new Dandelion() })
         {
             PlantState s = flower.initialState();
-            assertEquals(TemporaryStage.SEED, s);
-            assertEquals(TemporaryStage.SEEDLING, s = flower.nextState(s));
-            assertEquals(TemporaryStage.FLOWER, s = flower.nextState(s));
-            assertEquals(TemporaryStage.FLOWER, flower.nextState(s));
+            assertEquals(PlantStages.SEED, s);
+            assertEquals(PlantStages.SEEDLING, s = flower.nextState(s));
+            assertEquals(PlantStages.FLOWER, s = flower.nextState(s));
+            assertEquals(PlantStages.FLOWER, flower.nextState(s));
         }
     }
 
@@ -98,8 +98,8 @@ class PlantTypesTest
     void weed()
     {
         Weed weed = new Weed();
-        assertEquals(TemporaryStage.WEED, weed.initialState());
-        assertEquals(TemporaryStage.WEED, weed.nextState(TemporaryStage.WEED));
+        assertEquals(PlantStages.WEED, weed.initialState());
+        assertEquals(PlantStages.WEED, weed.nextState(PlantStages.WEED));
         assertTrue(weed.blocksGrowth());
     }
 
