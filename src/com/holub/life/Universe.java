@@ -36,9 +36,15 @@ import com.holub.life.plant.factory.SelectablePlant;
 public class Universe extends JPanel
 {	private 		final GameSession	session;	//GameSession 객체를 통해 게임 보드 관리
 
-	//식물 선택 버튼 줄 (식물 모드에서만 보임), Life가 창 위쪽에 붙임
+	//창 위쪽 버튼 줄 (Life가 붙임): Undo 버튼은 항상, 식물 선택·수확량은 식물 모드에서만 보임
 	private final JToolBar plantBar = new JToolBar();
 	private final Map<SelectablePlant, JToggleButton> plantButtons = new EnumMap<>(SelectablePlant.class);
+
+	//Undo 버튼 (되돌릴 동작이 없으면 비활성)
+	private final JButton undoButton = new JButton("Undo");
+
+	//식물 모드에서만 보이는 버튼 줄 항목 (식물 선택 버튼, 수확량 표시)
+	private final java.util.List<JComponent> plantOnlyItems = new java.util.ArrayList<>();
 
 	//수확량 표시 (버튼 줄 오른쪽): 과수 종류마다 [열매 그림] 개수
 	private final Map<Class<? extends Plant>, JLabel> harvestLabels = new LinkedHashMap<>();
@@ -124,6 +130,7 @@ public class Universe extends JPanel
 					bounds.y = 0;
 					// 클릭 좌표를 Session에 전달하고, 처리 후 화면을 다시 그린다.
 					session.userClicked(e.getPoint(), bounds);
+					refreshControls();		//클릭도 Undo 대상 -> Undo 버튼 상태 갱신
 					repaint();
 				}
 			}
@@ -133,6 +140,7 @@ public class Universe extends JPanel
 			new ActionListener()
 			{	public void actionPerformed(ActionEvent e)
 				{	session.clear();
+					refreshControls();		//Clear도 Undo 대상
 					repaint();
 				}
 			}
@@ -194,7 +202,7 @@ public class Universe extends JPanel
 					if(session.nextGeneration())
 						refreshNow();
 					//tick은 타이머 스레드에서 오므로 화면(Swing) 갱신은 EDT에서
-					SwingUtilities.invokeLater( () -> showHarvest( harvestCounts() ) );
+					SwingUtilities.invokeLater( () -> refreshControls() );
 				}
 			}
 		);
@@ -205,8 +213,24 @@ public class Universe extends JPanel
 	{	Clock.instance().stop();		//정지
 		session.changeMode(mode);		//보드 비우기 -> 모드 변경
 		updateModeMenu();				//갱신
-		showHarvest( harvestCounts() );	//수확량 표시 갱신 (모드 전환 시 0으로 초기화는 수확 담당)
+		refreshControls();				//수확량 0, Undo 비활성 (모드 전환 시 GameSession이 초기화)
 		repaint();						//다시 그리기
+	}
+
+	// Undo: 정지 → 직전 동작 되돌리기 → 모드(Load를 되돌리면 바뀔 수 있음)·버튼 상태 → 다시 그리기
+	private void undo()
+	{	Clock.instance().stop();
+		if( session.undo() )
+		{	updateModeMenu();
+			refreshControls();
+			repaint();
+		}
+	}
+
+	// 버튼 줄 상태를 GameSession에 맞춤: 수확량 표시, Undo 버튼 활성화 (EDT에서 호출)
+	private void refreshControls()
+	{	showHarvest( session.harvestCounts() );
+		undoButton.setEnabled( session.canUndo() );
 	}
 
 	// 현재 모드의 메뉴 항목 비활성화 (현재 모드 표시 및 현재 모드 재선택 불가)
@@ -219,12 +243,26 @@ public class Universe extends JPanel
 		updatePlantBar(mode);
 	}
 
-	// 식물 선택 버튼 줄 만들기: SelectablePlant 목록으로 버튼 생성 (잡초 제외)
+	// 버튼 줄 만들기: Undo 버튼 + SelectablePlant 목록으로 식물 선택 버튼 생성 (잡초 제외)
 	// 버튼을 누르면 그 식물의 팩토리를 GameSession에 넘김 -> 이후 빈 칸 클릭 시 그 식물이 심김
 	private void buildPlantBar()
 	{
 		plantBar.setFloatable(false);
-		plantBar.add( new JLabel(" 심을 식물: ") );
+
+		//Undo: 두 모드 모두에서 사용 (세대 진행·클릭·Clear·Load를 하나씩 되돌림)
+		undoButton.setEnabled(false);
+		undoButton.setToolTipText("직전 동작 되돌리기 (세대 진행·클릭·Clear·Load)");
+		undoButton.addActionListener( e -> undo() );
+		plantBar.add(undoButton);
+
+		//여기부터 식물 모드에서만 보이는 항목
+		JToolBar.Separator undoSeparator = new JToolBar.Separator();
+		plantBar.add(undoSeparator);
+		plantOnlyItems.add(undoSeparator);
+
+		JLabel plantLabel = new JLabel(" 심을 식물: ");
+		plantBar.add(plantLabel);
+		plantOnlyItems.add(plantLabel);
 
 		ButtonGroup group = new ButtonGroup();		//한 번에 하나만 선택
 		for(SelectablePlant plant : SelectablePlant.values())
@@ -238,11 +276,17 @@ public class Universe extends JPanel
 			group.add(button);
 			plantButtons.put(plant, button);
 			plantBar.add(button);
+			plantOnlyItems.add(button);
 		}
 
 		//수확량: 과수 종류마다 [열매 그림] 0 (과수가 추가되면 자동으로 늘어남)
-		plantBar.addSeparator();
-		plantBar.add( new JLabel(" 수확: ") );
+		JToolBar.Separator harvestSeparator = new JToolBar.Separator();
+		plantBar.add(harvestSeparator);
+		plantOnlyItems.add(harvestSeparator);
+
+		JLabel harvestTitle = new JLabel(" 수확: ");
+		plantBar.add(harvestTitle);
+		plantOnlyItems.add(harvestTitle);
 		for(SelectablePlant plant : SelectablePlant.values())
 		{
 			if(!plant.isHarvestable())
@@ -250,6 +294,7 @@ public class Universe extends JPanel
 			JLabel label = new JLabel(" 0  ", fruitIcon(plant.fruitImage()), SwingConstants.LEFT);
 			harvestLabels.put(plant.plantType(), label);
 			plantBar.add(label);
+			plantOnlyItems.add(label);
 		}
 	}
 
@@ -269,19 +314,13 @@ public class Universe extends JPanel
 			entry.getValue().setText(" " + counts.getOrDefault(entry.getKey(), 0) + "  ");
 	}
 
-	// 과수 종류별 수확 개수
-	// TODO 수확 담당(GameSession 수확 집계) 연결: 종류별 개수를 돌려주는 메서드가 생기면 여기서 호출
-	private Map<Class<? extends Plant>, Integer> harvestCounts()
-	{
-		return Map.of();
-	}
-
-	// 식물 모드에서만 버튼 줄을 보여 주고, 아직 아무것도 안 골랐으면 첫 번째 식물을 자동 선택
+	// 식물 선택·수확량은 식물 모드에서만 보여 주고(Undo 버튼은 항상), 아직 아무것도 안 골랐으면 첫 번째 식물을 자동 선택
 	// -> 식물 모드로 바꾸자마자 바로 칸을 눌러 심을 수 있음
 	private void updatePlantBar(SimulationMode mode)
 	{
 		boolean plantMode = (mode == SimulationMode.PLANT);
-		plantBar.setVisible(plantMode);
+		for(JComponent item : plantOnlyItems)
+			item.setVisible(plantMode);
 
 		if(plantMode && plantButtons.values().stream().noneMatch(JToggleButton::isSelected))
 		{
@@ -298,7 +337,7 @@ public class Universe extends JPanel
 			window.pack();
 	}
 
-	// Life가 창 위쪽(BorderLayout.NORTH)에 붙이는 식물 선택 버튼 줄
+	// Life가 창 위쪽(BorderLayout.NORTH)에 붙이는 버튼 줄 (Undo, 식물 선택, 수확량)
 	public JComponent plantToolbar()
 	{	return plantBar;
 	}
@@ -331,6 +370,7 @@ public class Universe extends JPanel
 		}
 
 		updateModeMenu();	//메뉴 상태를 모드에 맞추기
+		refreshControls();	//Load도 Undo 대상
 		repaint();
 	}
 

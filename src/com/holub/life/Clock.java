@@ -56,7 +56,11 @@ public class Clock
 	 *  					 the clock should be stopped.
 	 */
 
-	public void startTicking( int millisecondsBetweenTicks )
+	//synchronized: 정지(stop)와 타이머 Tick 실행이 같은 락을 씀
+	// TimerTask.cancel()은 이미 실행이 시작된 Tick을 멈추지 못함
+	//  -> 정지 직후 Undo·Load로 되돌린 보드를 늦게 들어온 Tick이 한 세대 진행시킬 수 있었음
+	// 정지는 실행 중인 Tick이 끝날 때까지 기다리고, 늦게 들어온 Tick은 자기가 현재 Tick이 아니면 실행하지 않음
+	public synchronized void startTicking( int millisecondsBetweenTicks )
 	{	if(tick != null)
 		{	tick.cancel();
 			tick=null;
@@ -64,7 +68,13 @@ public class Clock
 
 		if( millisecondsBetweenTicks > 0 )
 		{	tick =	new TimerTask()
-					{	public void run(){ tick(); }
+					{	public void run()
+						{	synchronized( Clock.this )
+							{	if( tick != this )	//정지되었거나 다른 속도로 바뀐 뒤 늦게 들어온 Tick
+									return;
+								tick();
+							}
+						}
 					};
 			clock.scheduleAtFixedRate( tick, 0, millisecondsBetweenTicks);
 		}

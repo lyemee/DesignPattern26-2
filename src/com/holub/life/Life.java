@@ -29,7 +29,7 @@ public final class Life extends JFrame
 		setDefaultCloseOperation	( EXIT_ON_CLOSE 		);
 		getContentPane().setLayout	( new BorderLayout()	);
 		getContentPane().add( Universe.instance(), BorderLayout.CENTER); //{=life.java.install}
-		getContentPane().add( Universe.instance().plantToolbar(), BorderLayout.NORTH);	//식물 모드의 식물 선택 버튼 줄
+		getContentPane().add( Universe.instance().plantToolbar(), BorderLayout.NORTH);	//Undo·식물 선택·수확량 버튼 줄
 
 		pack();
 		setVisible( true );
