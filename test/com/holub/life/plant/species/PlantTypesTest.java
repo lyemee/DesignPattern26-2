@@ -129,18 +129,15 @@ class PlantTypesTest
     }
 
     @Test
-    @DisplayName("민들레: 빈 보드에서 한 곳에 ㄱ자 모양 3칸, 모두 보드 안")
+    @DisplayName("민들레: 빈 보드에서 씨앗 1칸, 보드 안")
     void dandelionTargets()
     {
         for (int seed = 0; seed < 50; seed++)
         {
             List<Point> targets = new Dandelion().seedTargets(new Point(2, 2), field(16, Set.of()), new Random(seed));
-            assertEquals(3, targets.size(), "칸 수 " + targets);
-            Point first = targets.get(0);
-            assertEquals(List.of(first, new Point(first.x + 1, first.y), new Point(first.x + 1, first.y + 1)),
-                         targets, "한 곳에 ㄱ자 모양 " + targets);
-            for (Point p : targets)
-                assertTrue(p.x >= 0 && p.x < 16 && p.y >= 0 && p.y < 16, p + " 보드 밖");
+            assertEquals(1, targets.size(), "칸 수 " + targets);
+            Point p = targets.get(0);
+            assertTrue(p.x >= 0 && p.x < 16 && p.y >= 0 && p.y < 16, p + " 보드 밖");
         }
     }
 
@@ -160,10 +157,10 @@ class PlantTypesTest
     }
 
     @Test
-    @DisplayName("민들레: 3칸 중 일부만 비어 있으면 빈 칸만 채움")
-    void dandelionPartialSeed()
+    @DisplayName("민들레: 빈 칸이 하나뿐이면 반드시 그 칸에 뿌림")
+    void dandelionOnlyEmptyCellLeft()
     {
-        //3x3 보드에서 가운데 (1,1)만 빈 칸 -> 어느 위치를 골라도 결과는 그 한 칸뿐
+        //3x3 보드에서 가운데 (1,1)만 빈 칸 -> 결과는 그 한 칸뿐
         Set<Point> occupied = new HashSet<>();
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
