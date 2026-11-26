@@ -209,6 +209,126 @@ class GenerationManagerTest
         assertTrue(random.bounds.isEmpty());
     }
 
+    @Test
+    void separateCoordinatesResolveIndependentlyAndKeepInputTargetsUnchanged()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Point first = new Point(3, 4);
+        Point second = new Point(4, 3);
+        Point single = new Point(15, 15);
+        List<Point> targets = new ArrayList<>(List.of(first, second, single));
+        List<Point> original = targets.stream().map(Point::new).toList();
+        TestFlower a = new TestFlower(targets);
+        TestFlower b = new TestFlower(List.of(first, second));
+        board.reproduce(1, 1, a);
+        board.reproduce(1, 2, b);
+        ControlledRandom random = new ControlledRandom(1, 0);
+
+        manager.nextGeneration(board, random);
+
+        assertEquals(Map.of(first, b, second, a, single, a), board.placements);
+        assertEquals(List.of(2, 2), random.bounds);
+        assertEquals(original, targets);
+        assertTrue(board.isCurrentlyAlive(first));
+        assertTrue(board.isCurrentlyAlive(second));
+        assertTrue(board.isCurrentlyAlive(single));
+    }
+
+    @Test
+    void currentEmptySnapshotIsRebuiltForEveryGeneration()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Point target = new Point(9, 10);
+        TestFlower flower = new TestFlower(List.of(target));
+        board.reproduce(1, 1, flower);
+        flower.inspect = field -> assertTrue(field.isEmpty(target));
+        ControlledRandom random = new ControlledRandom();
+
+        manager.nextGeneration(board, random);
+        SeedField firstSnapshot = flower.field;
+        flower.inspect = field -> assertFalse(field.isEmpty(target));
+        manager.nextGeneration(board, random);
+
+        assertNotSame(firstSnapshot, flower.field);
+        assertEquals(2, flower.calls);
+        assertEquals(1, board.placements.size());
+        assertTrue(random.bounds.isEmpty());
+    }
+
+    @Test
+    void candidateCoordinatesAreNotChangedByLaterMutationOfReturnedPoints()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Point originalTarget = new Point(9, 10);
+        Point returnedPoint = new Point(originalTarget);
+        TestFlower a = new TestFlower(List.of(returnedPoint));
+        TestFlower b = new TestFlower(List.of(originalTarget));
+        b.inspect = field -> returnedPoint.setLocation(12, 13);
+        board.reproduce(1, 1, a);
+        board.reproduce(1, 2, b);
+        ControlledRandom random = new ControlledRandom(0);
+
+        manager.nextGeneration(board, random);
+
+        assertEquals(Map.of(originalTarget, a), board.placements);
+        assertEquals(List.of(2), random.bounds);
+        assertFalse(board.isCurrentlyAlive(new Point(12, 13)));
+    }
+
+    @Test
+    void sameSeedAndReportOrderReproduceSelectionsAcrossMultipleCoordinates()
+    {
+        Point first = new Point(3, 4);
+        Point second = new Point(4, 3);
+        Point third = new Point(10, 11);
+        List<TestFlower> flowers = List.of(new TestFlower(List.of(first, second, third)),
+                new TestFlower(List.of(first, second)), new TestFlower(List.of(second, third)));
+        ScriptedBoard a = new ScriptedBoard();
+        ScriptedBoard b = new ScriptedBoard();
+        for (int source = 0; source < flowers.size(); source++)
+        {
+            a.reproduce(1, source + 1, flowers.get(source));
+            b.reproduce(1, source + 1, flowers.get(source));
+        }
+        Random firstRandom = new Random(73);
+        Random secondRandom = new Random(73);
+
+        manager.nextGeneration(a, firstRandom);
+        manager.nextGeneration(b, secondRandom);
+
+        assertEquals(3, a.placements.size());
+        assertEquals(a.placements, b.placements);
+        assertEquals(firstRandom.nextLong(), secondRandom.nextLong());
+    }
+
+    @Test
+    void ordinaryBirthWithoutFlowerKeepsOriginalCalculationAndDoesNotConsumeRandom()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Point target = new Point(9, 10);
+        TestFlower birth = new TestFlower(List.of());
+        board.births.put(target, birth);
+        ControlledRandom random = new ControlledRandom();
+
+        manager.nextGeneration(board, random);
+
+        assertEquals(1, birth.initialCalls);
+        assertTrue(board.isCurrentlyAlive(target));
+        assertTrue(board.placements.isEmpty());
+        assertTrue(random.bounds.isEmpty());
+    }
+
+    @Test
+    void nullInputsAreRejectedBeforeCalculation()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+
+        assertThrows(NullPointerException.class, () -> manager.nextGeneration(board, null));
+        assertThrows(NullPointerException.class,
+                () -> manager.nextGeneration(null, new ControlledRandom()));
+        assertTrue(board.events.isEmpty());
+    }
+
     private static class TestFlower extends Plant
     {
         private final List<Point> targets;
