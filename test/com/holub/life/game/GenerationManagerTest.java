@@ -12,6 +12,7 @@ import com.holub.life.plant.PlantData;
 import com.holub.life.plant.PlantFactory;
 import com.holub.life.plant.PlantState;
 import com.holub.life.plant.SeedField;
+import com.holub.life.plant.species.Sunflower;
 import org.junit.jupiter.api.Test;
 
 import java.awt.Graphics;
@@ -513,6 +514,24 @@ class GenerationManagerTest
         assertThrows(NullPointerException.class,
                 () -> manager.nextGeneration(board, new ControlledRandom(), null));
         assertTrue(board.events.isEmpty());
+    }
+
+    @Test
+    void mergedSunflowerUsesCurrentEmptySnapshotAndSkipsDyingOccupiedNeighbor()
+    {
+        ScriptedBoard board = new ScriptedBoard();
+        Sunflower flower = new Sunflower();
+        board.reproduce(2, 2, flower);
+        Point dying = new Point(2, 1);
+        board.delegate.apply(dying.y, dying.x, Resident::flipAlive);
+        ControlledRandom random = new ControlledRandom();
+
+        manager.nextGeneration(board, random);
+
+        assertEquals(Map.of(new Point(2, 3), flower,
+                new Point(1, 2), flower, new Point(3, 2), flower), board.placements);
+        assertFalse(board.isCurrentlyAlive(dying));
+        assertTrue(random.bounds.isEmpty());
     }
 
     private static final class TestWeed extends Plant

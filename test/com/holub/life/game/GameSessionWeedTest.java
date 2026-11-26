@@ -7,6 +7,9 @@ import com.holub.life.Resident;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantFactory;
 import com.holub.life.plant.PlantState;
+import com.holub.life.plant.TemporaryStage;
+import com.holub.life.plant.factory.WeedFactory;
+import com.holub.life.plant.species.Weed;
 import org.junit.jupiter.api.Test;
 
 import java.awt.Point;
@@ -44,6 +47,21 @@ class GameSessionWeedTest
         assertEquals(1, factory.calls);
         assertEquals(1, fixture.random.calls);
         assertEquals(16, fixture.random.bound);
+    }
+
+    @Test
+    void mergedWeedFactoryCanBeUsedWithoutChangingSpeciesImplementation()
+    {
+        Fixture fixture = new Fixture();
+        fixture.session.changeMode(SimulationMode.PLANT);
+        WeedFactory factory = new WeedFactory();
+        Plant weed = factory.createPlant();
+
+        assertInstanceOf(Weed.class, weed);
+        assertEquals(TemporaryStage.WEED, weed.initialState());
+        assertTrue(fixture.session.nextGeneration(factory));
+        assertEquals(List.of(new Point(0, 0)), fixture.occupied());
+        assertEquals(1, fixture.random.calls);
     }
 
     @Test

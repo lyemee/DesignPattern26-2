@@ -207,8 +207,12 @@ public final class Resident implements Cell
 
 	public void redraw(Graphics g, Rectangle here, boolean drawAll)
     {   g = g.create();
-		g.setColor(amAlive ? LIVE_COLOR : DEAD_COLOR );
+		//식물이 있는 칸: 색 대신 종류·단계 그림 (Plant.getImage), 식물이 없으면 원래 색
+		boolean showPlant = amAlive && currentPlantData != null;
+		g.setColor(amAlive && !showPlant ? LIVE_COLOR : DEAD_COLOR );
 		g.fillRect(here.x+1, here.y+1, here.width-1, here.height-1);
+		if(showPlant)
+			drawPlantImage(g, here, currentPlantData.getPlant().getImage(currentPlantData.getState()));
 
 		// Doesn't draw a line on the far right and bottom of the
 		// grid, but that's life, so to speak. It's not worth the
@@ -218,6 +222,34 @@ public final class Resident implements Cell
 		g.drawLine( here.x, here.y, here.x, here.y + here.height );
 		g.drawLine( here.x, here.y, here.x + here.width, here.y  );
 		g.dispose();
+	}
+
+	//식물 그림을 칸 크기에 맞춰 그림 (그림 파일 이름은 식물 종류가 정함: Plant.getImage)
+	// 그림은 resources/plant/에서 처음 한 번만 읽고 이후에는 재사용
+	private static final java.util.Map<String, Image> PLANT_IMAGES = new java.util.concurrent.ConcurrentHashMap<>();
+	private static void drawPlantImage(Graphics g, Rectangle here, String fileName)
+	{
+		if(fileName == null)
+			return;
+		Image image = PLANT_IMAGES.computeIfAbsent(fileName, Resident::loadPlantImage);
+		if(image == null)
+			return;
+		if(g instanceof Graphics2D)		//작게 줄일 때 깨지지 않도록 부드럽게
+			((Graphics2D)g).setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+		g.drawImage(image, here.x+1, here.y+1, here.width-1, here.height-1, null);
+	}
+
+	private static Image loadPlantImage(String fileName)
+	{
+		java.net.URL url = Resident.class.getResource("/plant/" + fileName);
+		if(url == null)
+			return null;		//그림이 없으면 그리지 않음 (바탕색만 보임)
+		try
+		{	return javax.imageio.ImageIO.read(url);
+		}
+		catch(java.io.IOException e)
+		{	return null;
+		}
 	}
 
 	//기존 코드

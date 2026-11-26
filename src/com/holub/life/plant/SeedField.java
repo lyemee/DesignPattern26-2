@@ -10,5 +10,6 @@ public interface SeedField
     //보드 안이면서 현재 비어 있는 칸인지. 이번 계산에서 죽을 식물이 있는 칸도 false.
     boolean isEmpty(Point position);
 
+    //보드 한 변의 셀 개수 (민들레의 무작위 위치 계산용)
     int widthInCells();
 }
