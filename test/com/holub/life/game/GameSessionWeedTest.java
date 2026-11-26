@@ -124,7 +124,7 @@ class GameSessionWeedTest
 
         for (int generation = 1; generation <= 3; generation++)
         {
-            //화면 tick과 같은 진입점. Undo로 빈 보드를 복원해 미구현 State의 다음 단계 계산은 피한다.
+            //화면 tick과 같은 진입점의 요청·Undo 반복 검증. 연속 tick은 생애주기 통합 테스트에서 확인한다.
             assertTrue(fixture.session.nextGeneration(factory));
             assertEquals(List.of(new Point(0, 0)), fixture.occupied());
             assertInstanceOf(Weed.class,

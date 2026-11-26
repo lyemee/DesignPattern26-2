@@ -134,7 +134,7 @@ class GameSessionGenerationIntegrationTest
         }
     }
 
-    //실제 잡초 생성·배치는 실행하고, 아직 미구현인 수확 신호만 결과에 추가한다.
+    //실제 잡초 생성·배치는 실행하고, 수확 집계 계약을 분리해 검증하도록 결과를 주입한다.
     private static final class HarvestingManager extends GenerationManager
     {
         private int ordinaryCalls;

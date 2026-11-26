@@ -708,7 +708,7 @@ class GenerationManagerTest
 
     private record Request(int row, int column, Plant plant) {}
 
-    //미구현인 Lifecycle·State 대신 ①의 결과와 번식 신호를 준비한다.
+    //후보 수집·배치 계약을 독립적으로 검증하기 위해 ①의 결과와 번식 신호를 준비한다.
     //현재 상태 알림, sow와 transition은 실제 Neighborhood·Resident를 사용한다.
     private static final class ScriptedBoard implements Cell
     {
