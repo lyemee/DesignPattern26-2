@@ -39,6 +39,49 @@ class PlantLifecycleTest
     }
 
     @Test
+    @DisplayName("외로움: 씨앗·새싹·꽃은 살아 있고 성장 가능, 잡초·시든 나무는 사망")
+    void lonelySeedSeedlingFlowerSurvive()
+    {
+        for (PlantData p : new PlantData[]{ at(new AppleTree(), PlantStages.SEED), at(new AppleTree(), PlantStages.SEEDLING),
+                                            at(new Sunflower(), PlantStages.FLOWER) })
+        {
+            PlantState before = p.getState();
+            assertTrue(lifecycle.canGrow(p, false, true, false), before.toString());
+            assertTrue(lifecycle.applySurvival(p, false, true), before.toString());
+            assertSame(before, p.getState());
+        }
+        assertFalse(lifecycle.applySurvival(at(new Weed(), PlantStages.WEED), false, true));
+        assertFalse(lifecycle.applySurvival(at(new AppleTree(), PlantStages.WITHERED), false, true));
+    }
+
+    @Test
+    @DisplayName("외로움: 나무는 예외 없이 시듦")
+    void lonelyTreeStillWithers()
+    {
+        PlantData p = at(new AppleTree(), PlantStages.TREE);
+        assertFalse(lifecycle.canGrow(p, false, true, false));
+        assertTrue(lifecycle.applySurvival(p, false, true));
+        assertEquals(PlantStages.WITHERED, p.getState());
+    }
+
+    @Test
+    @DisplayName("과밀(외롭지 않음): 씨앗·새싹·꽃은 기존대로 사망")
+    void crowdedSeedSeedlingFlowerDie()
+    {
+        assertFalse(lifecycle.applySurvival(at(new AppleTree(), PlantStages.SEED), false, false));
+        assertFalse(lifecycle.applySurvival(at(new AppleTree(), PlantStages.SEEDLING), false, false));
+        assertFalse(lifecycle.applySurvival(at(new Sunflower(), PlantStages.FLOWER), false, false));
+        assertFalse(lifecycle.canGrow(at(new AppleTree(), PlantStages.SEED), false, false, false));
+    }
+
+    @Test
+    @DisplayName("외로운 씨앗도 이웃에 잡초가 있으면 성장하지 않음")
+    void lonelySeedBlockedByWeed()
+    {
+        assertFalse(lifecycle.canGrow(at(new AppleTree(), PlantStages.SEED), false, true, true));
+    }
+
+    @Test
     @DisplayName("생존 조건 불충족: 나무·열매나무는 사망 대신 시듦 (외로움·과밀 모두), 수확 없음")
     void treesWither()
     {

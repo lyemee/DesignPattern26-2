@@ -75,6 +75,39 @@ class ResidentPlantTest
         assertTrue(aliveAt(5, 5));
     }
 
+    @Test
+    @DisplayName("혼자 있는 꽃 씨앗: 새싹 -> 꽃 -> 씨 뿌림 신호 1개 후 소멸")
+    void loneFlowerSeedGrowsAndReproduces()
+    {
+        plant(new Sunflower(), 5, 5);
+        step(); assertSame(PlantStages.SEEDLING, plantAt(5, 5).getState());
+        step(); assertSame(PlantStages.FLOWER,   plantAt(5, 5).getState());
+        step();
+        assertEquals(List.of(new Point(5, 5)), seeding);
+        assertNull(plantAt(5, 5));
+    }
+
+    @Test
+    @DisplayName("혼자 있는 나무는 기존대로 시듦 (외로움 예외는 씨앗·새싹·꽃만)")
+    void loneSeedBecomesTreeThenWithers()
+    {
+        plant(new AppleTree(), 5, 5);
+        step(); step();
+        assertSame(PlantStages.TREE, plantAt(5, 5).getState());
+        step();
+        assertSame(PlantStages.WITHERED, plantAt(5, 5).getState());
+    }
+
+    @Test
+    @DisplayName("과밀한 씨앗은 기존대로 사망")
+    void overcrowdedSeedDies()
+    {
+        plant(new AppleTree(), 5, 5);
+        plant(new Weed(), 4, 4); plant(new Weed(), 4, 5); plant(new Weed(), 4, 6); plant(new Weed(), 5, 4);
+        step();
+        assertNull(plantAt(5, 5));
+    }
+
     //--- B. 시듦·회복 ---
 
     @Test
