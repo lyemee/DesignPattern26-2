@@ -99,6 +99,54 @@ class ResidentPlantTest
     }
 
     @Test
+    @DisplayName("이웃 수 경계: 1개(외로움 예외)·2~3개(기존 규칙)는 생존·성장, 4개 이상(과밀)은 사망")
+    void seedSurvivalByNeighborCount()
+    {
+        int[][] around = { {4, 4}, {4, 5}, {4, 6}, {5, 4}, {5, 6} };   //(5,5)의 이웃 칸
+        for (int neighbors = 1; neighbors <= 5; neighbors++)
+        {
+            board = newBoard(7);
+            plant(new AppleTree(), 5, 5);
+            for (int i = 0; i < neighbors; i++)
+                plant(new AppleTree(), around[i][0], around[i][1]);
+            step();
+            if (neighbors <= 3)
+                assertSame(PlantStages.SEEDLING, plantAt(5, 5).getState(), "이웃 " + neighbors + "개");
+            else
+                assertNull(plantAt(5, 5), "이웃 " + neighbors + "개");
+        }
+    }
+
+    @Test
+    @DisplayName("이웃 2~3개인 나무는 기존대로 시들지 않고 열매나무로 자람")
+    void treeWithTwoOrThreeNeighborsKeepsGrowing()
+    {
+        for (int neighbors = 2; neighbors <= 3; neighbors++)
+        {
+            board = newBoard(7);
+            board.apply(5, 5, cell -> cell.plant(tree()));
+            int[][] around = { {4, 4}, {4, 5}, {4, 6} };
+            for (int i = 0; i < neighbors; i++)
+            {
+                int[] c = around[i];
+                board.apply(c[0], c[1], cell -> cell.plant(tree()));
+            }
+            step();
+            assertSame(PlantStages.FRUIT, plantAt(5, 5).getState(), "이웃 " + neighbors + "개");
+        }
+    }
+
+    //씨앗 -> 새싹 -> 나무까지 키운 사과나무 데이터
+    private static PlantData tree()
+    {
+        PlantData data = new PlantData(new AppleTree());
+        data.getState().onStep(data);
+        data.getState().onStep(data);
+        assertSame(PlantStages.TREE, data.getState());
+        return data;
+    }
+
+    @Test
     @DisplayName("과밀한 씨앗은 기존대로 사망")
     void overcrowdedSeedDies()
     {
