@@ -13,6 +13,7 @@ import com.holub.life.plant.PlantFactory;
 import com.holub.life.plant.PlantState;
 import com.holub.life.plant.SeedField;
 import com.holub.life.plant.species.AppleTree;
+import com.holub.life.plant.species.Dandelion;
 import com.holub.life.plant.species.OrangeTree;
 import com.holub.life.plant.species.Sunflower;
 import org.junit.jupiter.api.Test;
@@ -128,6 +129,49 @@ class GenerationManagerTest
             assertEquals(List.of(3), random.bounds);
             assertEquals(1, board.placements.size());
         }
+    }
+
+    @Test
+    void dandelionsPickingTheSameEmptyCellSowOnlyOnce()
+    {
+        //빈 칸이 하나뿐 -> 두 민들레가 같은 칸을 고름 -> 칸별 후보 2개 중 1개만 심김
+        for (int index = 0; index < 2; index++)
+        {
+            ScriptedBoard board = new ScriptedBoard();
+            Point target = new Point(10, 11);
+            board.fillExcept(Set.of(target));
+            List<Dandelion> dandelions = List.of(new Dandelion(), new Dandelion());
+            board.reproduce(1, 1, dandelions.get(0));
+            board.reproduce(1, 2, dandelions.get(1));
+            //민들레 2번(각자 빈 칸 1개 중 선택) + 같은 칸 후보 2개 중 선택
+            ControlledRandom random = new ControlledRandom(0, 0, index);
+
+            manager.nextGeneration(board, random);
+
+            assertEquals(Map.of(target, dandelions.get(index)), board.placements);
+            assertEquals(List.of(1, 1, 2), random.bounds);
+        }
+    }
+
+    @Test
+    void dandelionsCollidingOnOneCellDoNotSpillIntoOtherEmptyCells()
+    {
+        //빈 칸 2개 중 두 민들레가 모두 첫 칸을 고르면 그 칸에만 1개 심기고 둘째 칸은 빈 칸으로 남음
+        ScriptedBoard board = new ScriptedBoard();
+        Point first = new Point(3, 10);
+        Point second = new Point(12, 10);
+        board.fillExcept(Set.of(first, second));
+        Dandelion a = new Dandelion();
+        Dandelion b = new Dandelion();
+        board.reproduce(1, 1, a);
+        board.reproduce(1, 2, b);
+        ControlledRandom random = new ControlledRandom(0, 0, 1);
+
+        manager.nextGeneration(board, random);
+
+        assertEquals(Map.of(first, b), board.placements);
+        assertFalse(board.isCurrentlyAlive(second));
+        assertEquals(List.of(2, 2, 2), random.bounds);
     }
 
     @Test
