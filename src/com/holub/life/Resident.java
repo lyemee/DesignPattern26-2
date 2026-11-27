@@ -93,6 +93,8 @@ public final class Resident implements Cell
 		if( southwest.isAlive()) ++neighbors;
 
 		boolean ruleSatisfied = (neighbors==3 || (amAlive && neighbors==2));
+		//외로움(이웃 0~1개): 씨앗·새싹·꽃은 이 이유로는 죽지 않음 (PlantLifecycle이 판정)
+		boolean lonely = neighbors < 2;
 
 		//식물이 없는 셀 -> 원래의 규칙
 		if(currentPlantData == null){
@@ -129,10 +131,10 @@ public final class Resident implements Cell
 
 		//성장 가능 여부는 생존 판정 전 단계로 판단
 		//  시든 나무 -> false -> 회복한 step에는 성장하지 않음
-		boolean canGrow = lifecycle.canGrow(next, ruleSatisfied, growthBlocked);
+		boolean canGrow = lifecycle.canGrow(next, ruleSatisfied, lonely, growthBlocked);
 
 		//다음 식물 상태 판정 (시듦·회복·사망, 회복은 이웃 잡초와 무관)
-		boolean alive = lifecycle.applySurvival(next, ruleSatisfied);
+		boolean alive = lifecycle.applySurvival(next, ruleSatisfied, lonely);
 
 		//살아있고 성장 가능한 상태에서 현재 state의 성장 동작 실행
 		//  번식 차례의 꽃이 생존 조건을 못 채우면 onStep 없음 -> 번식 없이 사망

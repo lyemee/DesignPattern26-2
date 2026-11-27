@@ -104,20 +104,32 @@ class PlantTypesTest
     }
 
     @Test
-    @DisplayName("해바라기: 상하좌우 중 빈 칸만, 보드 밖 제외")
+    @DisplayName("해바라기: 상하좌우 빈 칸 중 1칸만, 보드 밖 제외, 여러 번 뿌리면 빈 칸이 모두 골고루 나옴")
     void sunflowerTargets()
     {
         Sunflower sunflower = new Sunflower();
 
-        List<Point> all = sunflower.seedTargets(new Point(5, 5), field(10, Set.of()), new Random(0));
-        assertEquals(Set.of(new Point(5, 4), new Point(5, 6), new Point(4, 5), new Point(6, 5)), new HashSet<>(all));
+        assertSeedsOneOf(Set.of(new Point(5, 4), new Point(5, 6), new Point(4, 5), new Point(6, 5)),
+                         sunflower, new Point(5, 5), field(10, Set.of()));
+        assertSeedsOneOf(Set.of(new Point(5, 6), new Point(4, 5), new Point(6, 5)),
+                         sunflower, new Point(5, 5), field(10, Set.of(new Point(5, 4))));
+        assertSeedsOneOf(Set.of(new Point(0, 1), new Point(1, 0)),
+                         sunflower, new Point(0, 0), field(10, Set.of()));
+    }
 
-        List<Point> blocked = sunflower.seedTargets(new Point(5, 5), field(10, Set.of(new Point(5, 4))), new Random(0));
-        assertEquals(3, blocked.size());
-        assertFalse(blocked.contains(new Point(5, 4)));
-
-        List<Point> corner = sunflower.seedTargets(new Point(0, 0), field(10, Set.of()), new Random(0));
-        assertEquals(Set.of(new Point(0, 1), new Point(1, 0)), new HashSet<>(corner));
+    //매번 1칸이고 expected 안에 있으며, 50번 뿌리면 expected가 모두 한 번 이상 나옴
+    private static void assertSeedsOneOf(Set<Point> expected, Plant plant, Point position, SeedField field)
+    {
+        Set<Point> seen = new HashSet<>();
+        Random random = new Random(0);
+        for (int i = 0; i < 50; i++)
+        {
+            List<Point> targets = plant.seedTargets(position, field, random);
+            assertEquals(1, targets.size(), "칸 수 " + targets);
+            assertTrue(expected.contains(targets.get(0)), targets + " 후보 밖");
+            seen.add(targets.get(0));
+        }
+        assertEquals(expected, seen);
     }
 
     @Test
@@ -129,18 +141,15 @@ class PlantTypesTest
     }
 
     @Test
-    @DisplayName("민들레: 빈 보드에서 한 곳에 ㄱ자 모양 3칸, 모두 보드 안")
+    @DisplayName("민들레: 빈 보드에서 씨앗 1칸, 보드 안")
     void dandelionTargets()
     {
         for (int seed = 0; seed < 50; seed++)
         {
             List<Point> targets = new Dandelion().seedTargets(new Point(2, 2), field(16, Set.of()), new Random(seed));
-            assertEquals(3, targets.size(), "칸 수 " + targets);
-            Point first = targets.get(0);
-            assertEquals(List.of(first, new Point(first.x + 1, first.y), new Point(first.x + 1, first.y + 1)),
-                         targets, "한 곳에 ㄱ자 모양 " + targets);
-            for (Point p : targets)
-                assertTrue(p.x >= 0 && p.x < 16 && p.y >= 0 && p.y < 16, p + " 보드 밖");
+            assertEquals(1, targets.size(), "칸 수 " + targets);
+            Point p = targets.get(0);
+            assertTrue(p.x >= 0 && p.x < 16 && p.y >= 0 && p.y < 16, p + " 보드 밖");
         }
     }
 
@@ -160,10 +169,10 @@ class PlantTypesTest
     }
 
     @Test
-    @DisplayName("민들레: 3칸 중 일부만 비어 있으면 빈 칸만 채움")
-    void dandelionPartialSeed()
+    @DisplayName("민들레: 빈 칸이 하나뿐이면 반드시 그 칸에 뿌림")
+    void dandelionOnlyEmptyCellLeft()
     {
-        //3x3 보드에서 가운데 (1,1)만 빈 칸 -> 어느 위치를 골라도 결과는 그 한 칸뿐
+        //3x3 보드에서 가운데 (1,1)만 빈 칸 -> 결과는 그 한 칸뿐
         Set<Point> occupied = new HashSet<>();
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)

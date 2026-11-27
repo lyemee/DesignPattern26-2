@@ -11,5 +11,8 @@ final class FlowerState implements PlantState {
         next.markRemove();
     }
 
+    //외로워도 죽지 않고 씨를 뿌림
+    @Override public boolean survivesLoneliness() { return true; }
+
     @Override public String toString() { return "FLOWER"; }
 }

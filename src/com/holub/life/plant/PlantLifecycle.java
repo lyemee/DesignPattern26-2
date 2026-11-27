@@ -36,6 +36,25 @@ public class PlantLifecycle {
         return false;   //씨앗·새싹·꽃·잡초
     }
 
+    //외로움 예외를 반영한 생존 판정
+    //lonely: 이웃이 0~1개라 생존 규칙을 못 채운 경우
+    // 외로움으로 죽지 않는 단계(씨앗·새싹·꽃)는 생존 규칙을 충족한 것으로 봄 (과밀은 기존대로)
+    public boolean applySurvival(PlantData next, boolean ruleSatisfied, boolean lonely)
+    {
+        return applySurvival(next, ruleSatisfied || sparedFromLoneliness(next, lonely));
+    }
+
+    //외로움 예외를 반영한 성장 가능 여부 (외로운 씨앗·새싹·꽃도 성장)
+    public boolean canGrow(PlantData next, boolean ruleSatisfied, boolean lonely, boolean growthBlocked)
+    {
+        return canGrow(next, ruleSatisfied || sparedFromLoneliness(next, lonely), growthBlocked);
+    }
+
+    private static boolean sparedFromLoneliness(PlantData next, boolean lonely)
+    {
+        return lonely && next.getState().survivesLoneliness();
+    }
+
     //이번 step에 State의 onStep()을 실행할 수 있는지 (성장하면 매 step 바로 다음 단계)
     //growthBlocked : 이웃에 잡초가 있어 성장이 막히는지
     // 생존 규칙 충족, 이웃에 잡초 없음일 때만 true

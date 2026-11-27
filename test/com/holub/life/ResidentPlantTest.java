@@ -66,13 +66,94 @@ class ResidentPlantTest
     }
 
     @Test
-    @DisplayName("혼자 심은 씨앗은 규칙대로 다음 step에 사망 (이웃 0개 생존 규칙 없음)")
-    void loneSeedDies()
+    @DisplayName("혼자 심은 씨앗은 외로워도 죽지 않고 새싹으로 자람")
+    void loneSeedSurvivesAndGrows()
     {
         plant(new AppleTree(), 5, 5);
         step();
+        assertSame(PlantStages.SEEDLING, plantAt(5, 5).getState());
+        assertTrue(aliveAt(5, 5));
+    }
+
+    @Test
+    @DisplayName("혼자 있는 꽃 씨앗: 새싹 -> 꽃 -> 씨 뿌림 신호 1개 후 소멸")
+    void loneFlowerSeedGrowsAndReproduces()
+    {
+        plant(new Sunflower(), 5, 5);
+        step(); assertSame(PlantStages.SEEDLING, plantAt(5, 5).getState());
+        step(); assertSame(PlantStages.FLOWER,   plantAt(5, 5).getState());
+        step();
+        assertEquals(List.of(new Point(5, 5)), seeding);
         assertNull(plantAt(5, 5));
-        assertFalse(aliveAt(5, 5));
+    }
+
+    @Test
+    @DisplayName("혼자 있는 나무는 기존대로 시듦 (외로움 예외는 씨앗·새싹·꽃만)")
+    void loneSeedBecomesTreeThenWithers()
+    {
+        plant(new AppleTree(), 5, 5);
+        step(); step();
+        assertSame(PlantStages.TREE, plantAt(5, 5).getState());
+        step();
+        assertSame(PlantStages.WITHERED, plantAt(5, 5).getState());
+    }
+
+    @Test
+    @DisplayName("이웃 수 경계: 1개(외로움 예외)·2~3개(기존 규칙)는 생존·성장, 4개 이상(과밀)은 사망")
+    void seedSurvivalByNeighborCount()
+    {
+        int[][] around = { {4, 4}, {4, 5}, {4, 6}, {5, 4}, {5, 6} };   //(5,5)의 이웃 칸
+        for (int neighbors = 1; neighbors <= 5; neighbors++)
+        {
+            board = newBoard(7);
+            plant(new AppleTree(), 5, 5);
+            for (int i = 0; i < neighbors; i++)
+                plant(new AppleTree(), around[i][0], around[i][1]);
+            step();
+            if (neighbors <= 3)
+                assertSame(PlantStages.SEEDLING, plantAt(5, 5).getState(), "이웃 " + neighbors + "개");
+            else
+                assertNull(plantAt(5, 5), "이웃 " + neighbors + "개");
+        }
+    }
+
+    @Test
+    @DisplayName("이웃 2~3개인 나무는 기존대로 시들지 않고 열매나무로 자람")
+    void treeWithTwoOrThreeNeighborsKeepsGrowing()
+    {
+        for (int neighbors = 2; neighbors <= 3; neighbors++)
+        {
+            board = newBoard(7);
+            board.apply(5, 5, cell -> cell.plant(tree()));
+            int[][] around = { {4, 4}, {4, 5}, {4, 6} };
+            for (int i = 0; i < neighbors; i++)
+            {
+                int[] c = around[i];
+                board.apply(c[0], c[1], cell -> cell.plant(tree()));
+            }
+            step();
+            assertSame(PlantStages.FRUIT, plantAt(5, 5).getState(), "이웃 " + neighbors + "개");
+        }
+    }
+
+    //씨앗 -> 새싹 -> 나무까지 키운 사과나무 데이터
+    private static PlantData tree()
+    {
+        PlantData data = new PlantData(new AppleTree());
+        data.getState().onStep(data);
+        data.getState().onStep(data);
+        assertSame(PlantStages.TREE, data.getState());
+        return data;
+    }
+
+    @Test
+    @DisplayName("과밀한 씨앗은 기존대로 사망")
+    void overcrowdedSeedDies()
+    {
+        plant(new AppleTree(), 5, 5);
+        plant(new Weed(), 4, 4); plant(new Weed(), 4, 5); plant(new Weed(), 4, 6); plant(new Weed(), 5, 4);
+        step();
+        assertNull(plantAt(5, 5));
     }
 
     //--- B. 시듦·회복 ---
