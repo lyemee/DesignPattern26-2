@@ -4,10 +4,16 @@ import com.holub.life.Cell;
 import com.holub.life.CellReport;
 import com.holub.life.Neighborhood;
 import com.holub.life.Resident;
+import com.holub.life.history.BoardSnapshot;
 import com.holub.life.plant.Plant;
 import com.holub.life.plant.PlantData;
 import com.holub.life.plant.PlantFactory;
+import com.holub.life.plant.PlantStages;
 import com.holub.life.plant.PlantState;
+import com.holub.life.plant.factory.AppleTreeFactory;
+import com.holub.life.plant.factory.SunflowerFactory;
+import com.holub.life.plant.species.AppleTree;
+import com.holub.life.plant.species.Sunflower;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -184,6 +190,77 @@ class GameSessionTest
         assertEquals(Set.of(cell(3, 4), cell(4, 12), cell(0, SIZE - 1), cell(13, 2)), withPlant);
     }
 
+    //직접 심은 칸은 다음 세대 계산에서 이미 있는 식물로 취급되어 자동 생성이 덮어쓰지 않는지 확인
+    // 사과나무 3그루를 한 줄로 심으면 바로 위(2,5)·아래(4,5) 칸이 이웃 3개로 탄생 조건을 만족
+    // 아래 칸에는 해바라기를 직접 심고, 위 칸은 비워 두어 이 세대에 탄생이 실제로 일어나는지 함께 확인
+    // 사과나무 줄(3행)과 해바라기(4행)는 서로 다른 블록 -> 블록 경계를 넘는 이웃 계산도 함께 확인
+    @Test
+    @DisplayName("탄생 조건을 만족하는 칸에 직접 심은 식물이 다음 세대에도 유지되는지 테스트")
+    void plantedCellIsNotOverwrittenByBirth()
+    {
+        //1) 식물 모드 보드 준비 (보드를 함께 받아 칸의 식물 데이터를 확인)
+        Cell board = plantModeBoard();
+
+        //2) 사과나무 3그루를 3행 4~6열에 클릭으로 심기
+        //   클릭 -> userClicked가 픽셀 좌표를 칸 좌표로 변환 -> apply가 해당 칸까지 내려가 plant 실행
+        //   plant는 현재·다음 상태를 함께 바꿈 -> 다음 세대 계산에서 처음부터 있던 식물로 취급
+        session.selectPlant(new AppleTreeFactory());
+        click(3, 4); click(3, 5); click(3, 6);
+
+        //3) 탄생 조건을 만족하는 아래 칸(4,5)에 해바라기를 직접 심기, 위 칸(2,5)은 비워 둠
+        session.selectPlant(new SunflowerFactory());
+        click(4, 5);
+
+        //4) 한 세대 진행 (잡초 요청 없음 -> 무작위 잡초 위치가 결과에 끼어들지 않음)
+        //   ① 계산: (2,5)는 빈 칸 + 이웃 사과나무 3개 -> 사과나무 탄생 예정
+        //           (4,5)는 식물이 있는 칸 -> 탄생 계산 없이 해바라기 생존·성장 (씨앗 -> 새싹)
+        //   ② 후보 수집: (2,5)는 탄생 후보, (4,5)는 차지된 칸이라 어떤 후보도 놓이지 않음
+        //   ③ 반영: 계산해 둔 다음 상태를 실제 상태로
+        session.nextGeneration();
+
+        //5) 결과 확인
+        //   비워 둔 칸: 사과나무 탄생 -> 이 세대에 탄생이 실제로 일어남
+        assertInstanceOf(AppleTree.class, plantAt(board, 2, 5).getPlant());
+        //   심은 칸: 해바라기가 그대로 있고 한 단계 자람 -> 새로 생긴 식물이 아니라 심은 식물
+        PlantData planted = plantAt(board, 4, 5);
+        assertInstanceOf(Sunflower.class, planted.getPlant());
+        assertSame(PlantStages.SEEDLING, planted.getState());
+    }
+
+    //클릭으로 제거한 칸은 다음 세대 계산에서 빈 칸으로 취급되어 다시 식물이 생길 수 있는지 확인
+    // 탄생 조건을 만족하는 칸(4,5)에 사과나무를 심었다가 바로 제거
+    // 이웃이 모두 사과나무라 탄생 종류는 시드와 상관없이 사과나무
+    // 씨앗(SEED)이면 새로 탄생한 식물, 제거가 안 됐다면 심은 씨앗이 자라 새싹(SEEDLING)이 되므로 구분됨
+    @Test
+    @DisplayName("클릭으로 제거한 칸에 다음 세대에 식물이 다시 탄생하는지 테스트")
+    void removedCellCanBeRebornNextGeneration()
+    {
+        //1) 식물 모드 보드 준비
+        Cell board = plantModeBoard();
+
+        //2) 사과나무 3그루를 3행 4~6열에 클릭으로 심기
+        session.selectPlant(new AppleTreeFactory());
+        click(3, 4); click(3, 5); click(3, 6);
+
+        //3) 탄생 조건을 만족하는 칸(4,5)에 사과나무를 심었다가 다시 클릭해 제거
+        //   식물이 있는 칸을 클릭하면 remove 실행 -> 현재·다음 상태를 함께 지움
+        //   -> 다음 세대 계산에서 처음부터 빈 칸으로 취급
+        click(4, 5);                                                        //심기
+        click(4, 5);                                                        //제거
+
+        //4) 한 세대 진행 (잡초 요청 없음)
+        //   ① 계산: (4,5)는 빈 칸 + 이웃 사과나무 3개 -> 사과나무 탄생 예정 (씨앗 단계부터)
+        //   ② 후보 수집: (4,5)는 빈 칸이라 탄생 후보, 후보가 하나라 그대로 선택
+        //   ③ 반영: (4,5)에 사과나무 씨앗이 생김
+        session.nextGeneration();
+
+        //5) 결과 확인
+        //   사과나무이고 씨앗 단계 -> 제거된 뒤 새로 탄생한 식물 (제거가 안 됐다면 새싹)
+        PlantData reborn = plantAt(board, 4, 5);
+        assertInstanceOf(AppleTree.class, reborn.getPlant());
+        assertSame(PlantStages.SEED, reborn.getState());
+    }
+
     //테스트용 보조 메서드들 ---
 
     //Universe와 같은 방식으로 보드와 세션 생성 (보드와 세션이 같은 Random을 공유)
@@ -196,6 +273,24 @@ class GameSessionTest
     private static Cell newBoard(Random random)
     {
         return new Neighborhood(BLOCK, new Neighborhood(BLOCK, new Resident(random)));
+    }
+
+    //식물 모드 세션을 만들고 보드를 함께 돌려줌 -> 칸의 식물 종류·단계를 직접 확인하기 위함
+    // Universe와 같이 보드와 세션이 같은 Random을 공유
+    private Cell plantModeBoard()
+    {
+        Random random = new Random(SEED);
+        Cell board = newBoard(random);
+        session = new GameSession(board, random);
+        session.changeMode(SimulationMode.PLANT);
+        return board;
+    }
+
+    //(행, 열) 칸의 식물 데이터, 빈 칸이면 null
+    // Undo용 스냅샷이 쓰는 저장 경로(transfer)로 읽음 -> 보드는 바꾸지 않음
+    private static PlantData plantAt(Cell board, int row, int column)
+    {
+        return BoardSnapshot.of(board).plantAt(new Point(column, row));
     }
 
     //(행, 열) 셀을 클릭(GUI의 클릭 테스트용) -> 셀 중앙의 픽셀 좌표로 변환해 전달
